@@ -1,7 +1,37 @@
 ﻿@page "/"
 
-<PageTitle>Home</PageTitle>
+<DxGrid Data="@Data" PageSize="15"
+ColumnResizeMode="GridColumnResizeMode.NextColumn" TextWrapEnabled="false">
+    <Columns>
+        <DxGridDataColumn FieldName="Date" DisplayFormat="D" MinWidth="100" />
+        <DxGridDataColumn FieldName="Forecast" Width="15%" />
+        <DxGridDataColumn FieldName="CloudCover" Width="15%" />
+        <DxGridDataColumn FieldName="TemperatureC" Caption="@("Temp. (\x2103)")" Width="10%" />
+        <DxGridDataColumn FieldName="TemperatureF" Caption="@("Temp. (\x2109)")" Width="10%" />
+    </Columns>
+</DxGrid>
 
-<h1>Hello, world!</h1>
+@code {
+    List<WeatherForecast> Data { get; set; }
+    protected override void OnInitialized()
+    {
+        Data = new()
+        {
+            new()
+            {
+                Date = DateTime.Now,
+                TemperatureC = 95
+            }
+        };
+    }
 
-Welcome to your new app.
+    public class WeatherForecast
+    {
+        public DateTime Date { get; set; }
+        public int TemperatureC { get; set; }
+        public bool Precipitation { get; set; }
+        public string Forecast { get; set; }
+        public double TemperatureF => Math.Round((TemperatureC * 1.8 + 32), 2);
+        public string CloudCover { get; set; }
+    }
+}
