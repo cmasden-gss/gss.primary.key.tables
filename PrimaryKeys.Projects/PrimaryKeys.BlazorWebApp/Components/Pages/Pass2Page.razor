@@ -1,0 +1,285 @@
+﻿@page "/2"
+
+<div class="grid-container">
+    <DxGrid @ref="Grid"
+            PageSize="12"
+            Data="DataSource"
+            KeyFieldName="RowId"
+            ValidationEnabled="false"
+            EditMode="GridEditMode.EditCell"
+        ShowFilterRow="true"
+        ShowSearchBox="true"
+            EditModelSaving="Grid_EditModelSaving"
+            CustomizeElement="Grid_CustomizeElement"
+            CustomizeEditModel="Grid_CustomizeEditModel"
+            ColumnResizeMode="GridColumnResizeMode.NextColumn"
+            TextWrapEnabled="false"
+            HighlightRowOnHover="true">
+        <ToolbarTemplate>
+            <DxToolbar ItemRenderStyleMode="ToolbarRenderStyleMode.Plain">
+                <DxToolbarItem Text="New" Click="New_Click" IconCssClass="grid-toolbar-new" Enabled="true" />
+                <DxToolbarItem Text="Submit" Click="Submit_Click" IconCssClass="grid-toolbar-save" Enabled="BatchItemsEnabled" BeginGroup="true" />
+                <DxToolbarItem Text="Revert" Click="Revert_Click" IconCssClass="grid-toolbar-cancel" Enabled="BatchItemsEnabled" />
+            </DxToolbar>
+        </ToolbarTemplate>
+        <Columns>
+            <DxGridDataColumn FieldName="TableName" Caption="Table Name" MinWidth="100" />
+            <DxGridDataColumn FieldName="ColumnName" Caption="Column Name" MinWidth="100" />
+            <DxGridDataColumn FieldName="IsNone" Caption="None" MinWidth="80" />
+            <DxGridDataColumn FieldName="IsMasterKey" Caption="Master Key" MinWidth="80" />
+            <DxGridDataColumn FieldName="IsPrimaryKey" Caption="Primary Key" MinWidth="80" />
+            <DxGridDataColumn FieldName="IsForeignKey" Caption="Foreign Key" MinWidth="80" />
+            <DxGridDataColumn FieldName="ForeignKeyTable" Caption="Foreign Key Table" MinWidth="120" />
+            <DxGridDataColumn FieldName="ForeignKeyField" Caption="Foreign Key Field" MinWidth="120" />
+            <DxGridCommandColumn Width="40px" NewButtonVisible="false">
+                <CellDisplayTemplate>
+                    <div class="grid-cell-align-center">
+                        <DxButton IconCssClass="grid-icon grid-icon-delete"
+                                  CssClass="grid-delete-btn"
+                                  RenderStyle="ButtonRenderStyle.Link"
+                                  aria-label="Delete"
+                                  Click="@(() => DeleteDataItem(context.DataItem))" />
+                    </div>
+                </CellDisplayTemplate>
+                <CellEditTemplate>
+                    <div class="grid-cell-align-center">
+                        <DxButton Enabled="false"
+                                  aria-label="Delete"
+                                  CssClass="grid-disabled-button"
+                                  IconCssClass="grid-icon grid-icon-delete"
+                                  RenderStyle="ButtonRenderStyle.Link" />
+                    </div>
+                </CellEditTemplate>
+            </DxGridCommandColumn>
+        </Columns>
+                <DetailRowTemplate>
+@*             <Grid_MasterDetail_NestedGrid_DetailContent Customer="(Customer)context.DataItem" /> *@
+            <DxGrid Data="context.DataItem"
+                    PageSize="5"
+                    AutoExpandAllGroupRows="true"
+                    ColumnResizeMode="GridColumnResizeMode.NextColumn"
+                    TextWrapEnabled="false">
+                <Columns>
+                    <DxGridDataColumn FieldName="OrderId" DisplayFormat="d" GroupIndex="0" />
+                    <DxGridDataColumn FieldName="ProductName" Width="40%" />
+                    <DxGridDataColumn FieldName="UnitPrice" DisplayFormat="c" />
+                    <DxGridDataColumn FieldName="Quantity" />
+                    <DxGridDataColumn FieldName="Discount" DisplayFormat="p0" />
+                    <DxGridDataColumn FieldName="ExtendedPrice" DisplayFormat="c" />
+                </Columns>
+                <GroupSummary>
+                    <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum"
+                                       FieldName="ExtendedPrice"
+                                       FooterColumnName="ExtendedPrice" />
+                </GroupSummary>
+            </DxGrid>
+        </DetailRowTemplate>
+    </DxGrid>
+</div>
+
+@code {
+    IGrid Grid { get; set; }
+    object DetailGridData { get; set; }
+
+    // Our table/column data source.
+    IList<ColumnRow> DataSource { get; set; } = new List<ColumnRow>();
+
+    // Unsaved changes are tracked similarly to your sample.
+    Dictionary<ColumnRow, DataChange> UnsavedChanges { get; } = new();
+    bool BatchItemsEnabled => UnsavedChanges.Count > 0 || Grid.IsEditing();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await UpdateDataAsync();
+    }
+
+    // Toolbar actions.
+    async Task New_Click()
+    {
+        await Grid.StartEditNewRowAsync();
+    }
+    async Task Revert_Click()
+    {
+        await Grid.CancelEditAsync();
+        await ClearUnsavedChangesAsync();
+    }
+    async Task Submit_Click()
+    {
+        // For this mock version we just clear unsaved changes.
+        UnsavedChanges.Clear();
+    }
+
+    // Called when the grid renders any cell (to highlight modified ones).
+    void Grid_CustomizeElement(GridCustomizeElementEventArgs ea)
+    {
+        if (ea.ElementType == GridElementType.DataCell)
+        {
+            var rowData = (ColumnRow)Grid.GetDataItem(ea.VisibleIndex);
+            if (rowData != null && UnsavedChanges.TryGetValue(rowData, out var changes))
+            {
+                var col = (IGridDataColumn)ea.Column;
+                // If row added, or if this particular field was changed.
+                if (changes.Type == DataChangeType.Addition || changes.ChangedFields.Contains(col.FieldName))
+                {
+                    ea.CssClass = "grid-modified-cell";
+                }
+            }
+        }
+    }
+
+    // Called when a new row is created or a row is about to be edited.
+    void Grid_CustomizeEditModel(GridCustomizeEditModelEventArgs e)
+    {
+        if (e.IsNew)
+        {
+            var newRow = (ColumnRow)e.EditModel;
+            newRow.RowId = DataSource.Any() ? DataSource.Max(x => x.RowId) + 1 : 1;
+            newRow.TableName = "JOB_HEADER";
+            newRow.ColumnName = "NewColumn";
+        }
+    }
+
+    // Called after a row edit is submitted (for both new and existing rows).
+    void Grid_EditModelSaving(GridEditModelSavingEventArgs e)
+    {
+        var editedRow = (ColumnRow)e.EditModel;
+        var originalRow = (ColumnRow)e.DataItem;
+
+        if (e.IsNew)
+        {
+            // Insert row
+            DataSource.Add(editedRow);
+            UnsavedChanges[editedRow] = new(DataChangeType.Addition, new());
+        }
+        else
+        {
+            // Modify row
+            var changedFields = ApplyModifiedFields(editedRow, originalRow);
+            if (changedFields.Count > 0)
+            {
+                if (UnsavedChanges.TryGetValue(originalRow, out var changes))
+                {
+                    changes.ChangedFields.UnionWith(changedFields);
+                }
+                else
+                {
+                    UnsavedChanges[originalRow] = new(DataChangeType.Modification, changedFields);
+                }
+            }
+        }
+    }
+
+    // Called when user clicks the “Delete” button in the command column.
+    void DeleteDataItem(object dataItem)
+    {
+        var row = (ColumnRow)dataItem;
+        UnsavedChanges[row] = new(DataChangeType.Delete, new());
+        DataSource.Remove(row);
+        Grid.Reload();
+    }
+
+    async Task ClearUnsavedChangesAsync()
+    {
+        UnsavedChanges.Clear();
+        await UpdateDataAsync();
+    }
+
+    // Mock data that matches your example:
+    // (JOB_HEADER, JOB, false, true, true, false) etc.
+    async Task UpdateDataAsync()
+    {
+        DataSource = new List<ColumnRow> {
+            new(1, "JOB_HEADER", "JOB",        false, true,  true,  false, null,              null),
+            new(2, "JOB_HEADER", "SUFFIX",     false, true,  true,  false, null,              null),
+            new(3, "JOB_HEADER", "FILLER1",    true,  false, false, false, null,              null),
+            new(4, "JOB_HEADER", "PART",       false, false, false, true,  "INVENTORY_MSTR",  "PART"),
+            new(5, "JOB_HEADER", "LOCATION",   false, false, false, true,  "INVENTORY_MSTR",  "LOCATION"),
+            new(6, "JOB_HEADER", "PRODUCT_LINE",false,false,false,false,null, null),
+            new(7, "JOB_HEADER", "ROUTER",     false, false, false, false, null,              null),
+            new(8, "JOB_HEADER", "PRIORITY",   true,  false, false, false, null,              null)
+        };
+        await Task.CompletedTask;
+    }
+
+    // Utility: copy changed fields from "edited" to "original" & return which fields changed.
+    HashSet<string> ApplyModifiedFields(ColumnRow edited, ColumnRow original)
+    {
+        var changedFields = new HashSet<string>();
+        if (edited.TableName != original.TableName)
+        {
+            original.TableName = edited.TableName;
+            changedFields.Add(nameof(ColumnRow.TableName));
+        }
+        if (edited.ColumnName != original.ColumnName)
+        {
+            original.ColumnName = edited.ColumnName;
+            changedFields.Add(nameof(ColumnRow.ColumnName));
+        }
+        if (edited.IsNone != original.IsNone)
+        {
+            original.IsNone = edited.IsNone;
+            changedFields.Add(nameof(ColumnRow.IsNone));
+        }
+        if (edited.IsMasterKey != original.IsMasterKey)
+        {
+            original.IsMasterKey = edited.IsMasterKey;
+            changedFields.Add(nameof(ColumnRow.IsMasterKey));
+        }
+        if (edited.IsPrimaryKey != original.IsPrimaryKey)
+        {
+            original.IsPrimaryKey = edited.IsPrimaryKey;
+            changedFields.Add(nameof(ColumnRow.IsPrimaryKey));
+        }
+        if (edited.IsForeignKey != original.IsForeignKey)
+        {
+            original.IsForeignKey = edited.IsForeignKey;
+            changedFields.Add(nameof(ColumnRow.IsForeignKey));
+        }
+        if (edited.ForeignKeyTable != original.ForeignKeyTable)
+        {
+            original.ForeignKeyTable = edited.ForeignKeyTable;
+            changedFields.Add(nameof(ColumnRow.ForeignKeyTable));
+        }
+        if (edited.ForeignKeyField != original.ForeignKeyField)
+        {
+            original.ForeignKeyField = edited.ForeignKeyField;
+            changedFields.Add(nameof(ColumnRow.ForeignKeyField));
+        }
+        return changedFields;
+    }
+
+    // Minimally track data changes
+    record DataChange(DataChangeType Type, HashSet<string> ChangedFields);
+    enum DataChangeType { Modification, Addition, Delete }
+
+    // Mock row model representing a column schema
+    public class ColumnRow
+    {
+        public int RowId { get; set; }
+        public string TableName { get; set; }
+        public string ColumnName { get; set; }
+        public bool IsNone { get; set; }
+        public bool IsMasterKey { get; set; }
+        public bool IsPrimaryKey { get; set; }
+        public bool IsForeignKey { get; set; }
+        public string ForeignKeyTable { get; set; }
+        public string ForeignKeyField { get; set; }
+
+        public ColumnRow() { }
+
+        public ColumnRow(int rowId, string tName, string cName,
+                         bool none, bool master, bool primary, bool foreignK,
+                         string fkTable, string fkField)
+        {
+            RowId = rowId;
+            TableName = tName;
+            ColumnName = cName;
+            IsNone = none;
+            IsMasterKey = master;
+            IsPrimaryKey = primary;
+            IsForeignKey = foreignK;
+            ForeignKeyTable = fkTable;
+            ForeignKeyField = fkField;
+        }
+    }
+}
