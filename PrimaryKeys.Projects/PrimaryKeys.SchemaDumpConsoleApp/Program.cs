@@ -554,9 +554,9 @@ namespace SchemaUpdateApp
             "table.relations.information.version.json");
 
         // We hold schema per table: table name -> list of ColumnRow objects.
-        private static Dictionary<string, List<ColumnRow>> OldSchemas = new Dictionary<string, List<ColumnRow>>();
+        private static List<ColumnRow> OldSchemas = new List<ColumnRow>();
 
-        private static Dictionary<string, List<ColumnRow>> NewSchemas = new Dictionary<string, List<ColumnRow>>();
+        private static List<ColumnRow> NewSchemas = new List<ColumnRow>();
 
         private static async Task Main(string[] args)
         {
@@ -575,6 +575,14 @@ namespace SchemaUpdateApp
             string connectionString = "Server DSN=Global8IY;UID=Master;PWD=master;Host=gss2k19clinic5";
             ActianClient actianClient = new ActianClient(connectionString);
             List<string> tableNames = actianClient.GetTableNames();
+
+            // Remove tables that start with "Y_", "Z_" or "BI_"
+            tableNames = tableNames
+                .Where(t => !(t.StartsWith("Y_", StringComparison.OrdinalIgnoreCase) ||
+                              t.StartsWith("Z_", StringComparison.OrdinalIgnoreCase) ||
+                              t.StartsWith("BI_", StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+
             Console.WriteLine("Tables found:");
             tableNames.ForEach(t => Console.WriteLine("  " + t));
 
@@ -599,7 +607,7 @@ namespace SchemaUpdateApp
                 }
 
                 List<ColumnRow> columnRows = SchemaConversion.ConvertToColumnRows(liveSchema);
-                NewSchemas[table] = columnRows;
+                NewSchemas.AddRange(columnRows);
             }
 
             // ----- 3. Apply table relations (foreign key, mask info, etc.) to the new schemas -----
@@ -612,13 +620,14 @@ namespace SchemaUpdateApp
                 try
                 {
                     string jsonOld = await File.ReadAllTextAsync(schemaFilePath);
-                    OldSchemas = JsonSerializer.Deserialize<Dictionary<string, List<ColumnRow>>>(jsonOld);
+                    var loaded = JsonSerializer.Deserialize<List<ColumnRow>>(jsonOld);
+                    OldSchemas = loaded != null ? loaded.OrderBy(x => x.TableName).ThenBy(x => x.ColumnIndex).ToList() : new List<ColumnRow>();
                     Console.WriteLine("\nLoaded previous schema from file.");
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine("Error reading previous schema: " + ex.Message);
-                    OldSchemas = new Dictionary<string, List<ColumnRow>>();
+                    OldSchemas = new List<ColumnRow>();
                 }
             }
             else
@@ -628,59 +637,81 @@ namespace SchemaUpdateApp
 
             // ----- 5. Compare new schemas to old schemas and add audit entries -----
             string currentUser = Environment.UserName;
-            foreach (var kvp in NewSchemas)
+            foreach (var newCol in NewSchemas)
             {
-                string tableName = kvp.Key;
-                List<ColumnRow> newSchema = kvp.Value;
-                if (OldSchemas.ContainsKey(tableName))
+                // Find matching record by TableName and ColumnName.
+                var oldCol = OldSchemas.FirstOrDefault(c =>
+                    c.TableName.Equals(newCol.TableName, StringComparison.OrdinalIgnoreCase) &&
+                    c.ColumnName.Equals(newCol.ColumnName, StringComparison.OrdinalIgnoreCase));
+                if (oldCol == null)
                 {
-                    List<ColumnRow> oldSchema = OldSchemas[tableName];
-                    SchemaConversion.UpdateSchemaWithAudit(oldSchema, newSchema, currentUser);
+                    newCol.AuditHistory.Add(new AuditEntry
+                    {
+                        ChangedOn = DateTime.Now,
+                        ChangedBy = currentUser,
+                        Description = "New column added",
+                        ColumnName = newCol.ColumnName,
+                        PreviousValue = string.Empty,
+                        NewValue = newCol.ColumnName
+                    });
                 }
                 else
                 {
-                    // Entire table is new.
-                    foreach (var col in newSchema)
+                    if (newCol.IsPrimaryKey != oldCol.IsPrimaryKey)
                     {
-                        col.AuditHistory.Add(new AuditEntry
+                        newCol.AuditHistory.Add(new AuditEntry
                         {
                             ChangedOn = DateTime.Now,
                             ChangedBy = currentUser,
-                            Description = "Entire table newly added; column added",
-                            ColumnName = col.ColumnName,
-                            PreviousValue = string.Empty,
-                            NewValue = col.ColumnName
+                            Description = "PrimaryKey flag changed",
+                            ColumnName = newCol.ColumnName,
+                            PreviousValue = oldCol.IsPrimaryKey.ToString(),
+                            NewValue = newCol.IsPrimaryKey.ToString()
                         });
                     }
+                    if (newCol.IsForeignKey != oldCol.IsForeignKey)
+                    {
+                        newCol.AuditHistory.Add(new AuditEntry
+                        {
+                            ChangedOn = DateTime.Now,
+                            ChangedBy = currentUser,
+                            Description = "ForeignKey flag changed",
+                            ColumnName = newCol.ColumnName,
+                            PreviousValue = oldCol.IsForeignKey.ToString(),
+                            NewValue = newCol.IsForeignKey.ToString()
+                        });
+                    }
+                    // Additional field comparisons can be added here.
                 }
             }
 
-            // ----- 6. Save the new (updated) schemas back to the file -----
-            string newJson = JsonSerializer.Serialize(NewSchemas, new JsonSerializerOptions { WriteIndented = true });
+            // 6. Save the updated NewSchemas back to file.
+            var sortedNew = NewSchemas.OrderBy(x => x.TableName).ThenBy(x => x.ColumnIndex).ToList();
+            string newJson = JsonSerializer.Serialize(sortedNew, new JsonSerializerOptions { WriteIndented = true });
             await File.WriteAllTextAsync(schemaFilePath, newJson);
             Console.WriteLine($"\nUpdated schema saved to {schemaFilePath}");
 
             // ----- 7. Output the updated schema with audit information -----
-            Console.WriteLine("\n=== Updated Schema with Audit Information ===");
-            foreach (var kvp in NewSchemas)
-            {
-                Console.WriteLine($"\nTable: {kvp.Key}");
-                foreach (var col in kvp.Value)
-                {
-                    Console.WriteLine($"  Column: {col.ColumnName}");
-                    if (col.AuditHistory.Any())
-                    {
-                        foreach (var audit in col.AuditHistory)
-                        {
-                            Console.WriteLine($"    {audit.ChangedOn} - {audit.ChangedBy}: {audit.Description} (from '{audit.PreviousValue}' to '{audit.NewValue}')");
-                        }
-                    }
-                    else
-                    {
-                        Console.WriteLine("    No changes.");
-                    }
-                }
-            }
+            //Console.WriteLine("\n=== Updated Schema with Audit Information ===");
+            //foreach (var kvp in NewSchemas)
+            //{
+            //    Console.WriteLine($"\nTable: {kvp.Key}");
+            //    foreach (var col in kvp.Value)
+            //    {
+            //        Console.WriteLine($"  Column: {col.ColumnName}");
+            //        if (col.AuditHistory.Any())
+            //        {
+            //            foreach (var audit in col.AuditHistory)
+            //            {
+            //                Console.WriteLine($"    {audit.ChangedOn} - {audit.ChangedBy}: {audit.Description} (from '{audit.PreviousValue}' to '{audit.NewValue}')");
+            //            }
+            //        }
+            //        else
+            //        {
+            //            Console.WriteLine("    No changes.");
+            //        }
+            //    }
+            //}
 
             Console.WriteLine("\nSchema update process complete. Press any key to exit.");
             Console.ReadKey();
