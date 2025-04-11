@@ -7,58 +7,58 @@
 @inject NavigationManager Navigation
 @inject IDbContextFactory<PrimaryKeysContext> DbContextFactory
 @inject IHttpContextAccessor HttpContextAccessor
+@inject IConfiguration Configuration
 
-<div class="container my-4">
-    <h1 class="mb-4">Schema Manager</h1>
+<h5 class="mb-4">Schema Manager - @currentUser</h5>
 
-    <DxLoadingPanel @bind-Visible="isLoading"
-    IsContentBlocked="true"
-    ApplyBackgroundShading="false"
-    IndicatorAreaVisible="false"
-    Text="Fetching Data...">
-        <DxGrid @ref="Grid"
-        PageSize="100"
-        PageSizeSelectorVisible="true"
-        PageSizeSelectorItems="@(new int[] { 100, 250, 500 })"
-        PageSizeSelectorAllRowsItemVisible="true"
-        Data="DataSource"
-        KeyFieldName="Id"
-        ValidationEnabled="false"
-        ShowFilterRow="true"
-        ShowSearchBox="true"
+<DxLoadingPanel @bind-Visible="isLoading"
+IsContentBlocked="true"
+ApplyBackgroundShading="false"
+IndicatorAreaVisible="false"
+Text="Fetching Data...">
+    <DxGrid @ref="Grid"
+    PageSize="100"
+    PageSizeSelectorVisible="true"
+    PageSizeSelectorItems="@(new int[] { 100, 250, 500 })"
+    PageSizeSelectorAllRowsItemVisible="true"
+    Data="DataSource"
+    KeyFieldName="Id"
+    ValidationEnabled="false"
+    ShowFilterRow="true"
+    ShowSearchBox="true"
 
-        EditMode="GridEditMode.EditCell"
-        EditModelSaving="Grid_EditModelSaving"
-        CustomizeElement="Grid_CustomizeElement"
-        CustomizeEditModel="Grid_CustomizeEditModel"
-        ColumnResizeMode="GridColumnResizeMode.NextColumn"
-        TextWrapEnabled="false"
-        HighlightRowOnHover="true">
-            <ToolbarTemplate>
-                <DxToolbar ItemRenderStyleMode="ToolbarRenderStyleMode.Plain">
-                    <DxToolbarItem Text="New" Click="New_Click" IconCssClass="grid-toolbar-new" Enabled="true" />
-                    <DxToolbarItem Text="Submit" Click="Submit_Click" IconCssClass="grid-toolbar-save" Enabled="BatchItemsEnabled" BeginGroup="true" />
-                    <DxToolbarItem Text="Revert" Click="Revert_Click" IconCssClass="grid-toolbar-cancel" Enabled="BatchItemsEnabled" />
-                </DxToolbar>
-            </ToolbarTemplate>
-            <Columns>
-                <DxGridDataColumn FieldName="TableName" Caption="Table Name" MinWidth="100" />
-                <DxGridDataColumn FieldName="ColumnName" Caption="Column Name" MinWidth="100" />
-                <DxGridDataColumn FieldName="IsNone" Caption="None" Width="80" />
-                <DxGridDataColumn FieldName="IsMasterKey" Caption="Master Key" Width="80" />
-                <DxGridDataColumn FieldName="IsPrimaryKey" Caption="Primary Key" Width="80" />
-                <DxGridDataColumn FieldName="IsForeignKey" Caption="Foreign Key" Width="80" />
-                <DxGridDataColumn FieldName="ForeignKeyTable" Caption="Foreign Key Table" MinWidth="120" />
-                <DxGridDataColumn FieldName="ForeignKeyField" Caption="Foreign Key Field" MinWidth="120" />
-                <DxGridCommandColumn Width="60px" NewButtonVisible="false">
-                    <CellDisplayTemplate>
-                        <div class="text-center">
-                            <button type="button" class="btn btn-link grid-disabled-button" aria-label="Delete" @onclick="@(() => DeleteDataItem(context.DataItem))">
-                                <i class="bi bi-trash-fill"></i>
-                            </button>
-                        </div>
-                    </CellDisplayTemplate>
-                    <CellEditTemplate>
+    EditMode="GridEditMode.EditCell"
+    EditModelSaving="Grid_EditModelSaving"
+    CustomizeElement="Grid_CustomizeElement"
+    CustomizeEditModel="Grid_CustomizeEditModel"
+    ColumnResizeMode="GridColumnResizeMode.NextColumn"
+    TextWrapEnabled="false"
+    HighlightRowOnHover="true">
+        <ToolbarTemplate>
+            <DxToolbar ItemRenderStyleMode="ToolbarRenderStyleMode.Plain">
+                <DxToolbarItem Text="New" Click="New_Click" IconCssClass="grid-toolbar-new" Enabled="true" />
+                <DxToolbarItem Text="Submit" Click="Submit_Click" IconCssClass="grid-toolbar-save" Enabled="BatchItemsEnabled" BeginGroup="true" />
+                <DxToolbarItem Text="Revert" Click="Revert_Click" IconCssClass="grid-toolbar-cancel" Enabled="BatchItemsEnabled" />
+            </DxToolbar>
+        </ToolbarTemplate>
+        <Columns>
+            <DxGridDataColumn FieldName="TableName" Caption="Table Name" MinWidth="100" ReadOnly="@(!isAdmin)" />
+            <DxGridDataColumn FieldName="ColumnName" Caption="Column Name" MinWidth="100" ReadOnly="@(!isAdmin)" />
+            <DxGridDataColumn FieldName="IsNone" Caption="None" MinWidth="40" />
+            <DxGridDataColumn FieldName="IsMasterKey" Caption="Master Key" MinWidth="40" />
+            <DxGridDataColumn FieldName="IsPrimaryKey" Caption="Primary Key" MinWidth="40" />
+            <DxGridDataColumn FieldName="IsForeignKey" Caption="Foreign Key" MinWidth="40" />
+            <DxGridDataColumn FieldName="ForeignKeyTable" Caption="Foreign Key Table" MinWidth="120" />
+            <DxGridDataColumn FieldName="ForeignKeyField" Caption="Foreign Key Field" MinWidth="120" />
+            <DxGridCommandColumn Width="60px" NewButtonVisible="false" EditButtonVisible="false" SaveButtonVisible="false">
+                <CellDisplayTemplate>
+                    <div class="text-center">
+                        <button type="button" class="btn btn-link grid-disabled-button" aria-label="Delete" @onclick="@(() => DeleteDataItem(context.DataItem))" readonly="@(!isAdmin)">
+                            <i class="bi bi-trash-fill"></i>
+                        </button>
+                    </div>
+                </CellDisplayTemplate>
+                @*                     <CellEditTemplate>
                         <div class="text-center">
                             <DxButton Enabled="false"
                             aria-label="Delete"
@@ -66,27 +66,26 @@
                             IconCssClass="grid-icon grid-icon-delete"
                             RenderStyle="ButtonRenderStyle.Link" />
                         </div>
-                    </CellEditTemplate>
-                </DxGridCommandColumn>
-            </Columns>
-            <!-- DetailRowTemplate shows audit history for a given row -->
-            <DetailRowTemplate Context="detailContext">
-                <DxGrid Data="((ColumnRow)detailContext.DataItem).AuditHistory"
-                PageSize="5"
-                ColumnResizeMode="GridColumnResizeMode.NextColumn"
-                TextWrapEnabled="false">
-                    <Columns>
-                        <DxGridDataColumn FieldName="ChangedOn" Caption="Changed On" DisplayFormat="g" MinWidth="120" />
-                        <DxGridDataColumn FieldName="ChangedBy" Caption="Changed By" MinWidth="100" />
-                        <DxGridDataColumn FieldName="Description" Caption="Description" MinWidth="150" />
-                        <DxGridDataColumn FieldName="PreviousValue" Caption="Previous" MinWidth="100" />
-                        <DxGridDataColumn FieldName="NewValue" Caption="New" MinWidth="100" />
-                    </Columns>
-                </DxGrid>
-            </DetailRowTemplate>
-        </DxGrid>
-    </DxLoadingPanel>
-</div>
+                    </CellEditTemplate> *@
+            </DxGridCommandColumn>
+        </Columns>
+        <!-- DetailRowTemplate shows audit history for a given row -->
+        <DetailRowTemplate Context="detailContext">
+            <DxGrid Data="((ColumnRow)detailContext.DataItem).AuditHistory"
+            PageSize="5"
+            ColumnResizeMode="GridColumnResizeMode.NextColumn"
+            TextWrapEnabled="false">
+                <Columns>
+                    <DxGridDataColumn FieldName="ChangedOn" Caption="Changed On" DisplayFormat="g" MinWidth="120" />
+                    <DxGridDataColumn FieldName="ChangedBy" Caption="Changed By" MinWidth="100" />
+                    <DxGridDataColumn FieldName="Description" Caption="Description" MinWidth="150" />
+                    <DxGridDataColumn FieldName="PreviousValue" Caption="Previous" MinWidth="100" />
+                    <DxGridDataColumn FieldName="NewValue" Caption="New" MinWidth="100" />
+                </Columns>
+            </DxGrid>
+        </DetailRowTemplate>
+    </DxGrid>
+</DxLoadingPanel>
 
 <!-- Save Confirmation Modal -->
 @if (ShowSaveModalFlag)
@@ -158,7 +157,11 @@
         if (user?.Identity?.IsAuthenticated == true)
         {
             currentUser = user.Identity.Name.Split('\\').Last().ToLower();
-            isAdmin = (currentUser == "tmaynard" || currentUser == "jdavis");
+
+            // Read the admins from appsettings.
+            var admins = Configuration.GetSection("IdentityConfiguration:Administrators").Get<string[]>() ?? Array.Empty<string>();
+            isAdmin = admins.Any(u => string.Equals(u, currentUser, StringComparison.OrdinalIgnoreCase));
+
         }
 
         await LoadDataFromDbAsync();
@@ -223,7 +226,7 @@
 
     async Task ConfirmRevert()
     {
-        // await Grid.CancelEditAsync();
+        await Grid.CancelEditAsync();
         CloseRevertModal();
         UnsavedChanges.Clear();
         await LoadDataFromDbAsync();
@@ -393,7 +396,7 @@
             .Include(cr => cr.AuditHistory)
             .OrderBy(x => x.TableName)
             .ThenBy(x => x.ColumnIndex)
-            .Take(50)
+            // .Take(50)
             .ToListAsync();
         Console.WriteLine("Loaded schema from the database.");
 
@@ -431,6 +434,16 @@
                             context.ColumnRows.Attach(item);
                         }
                         context.Entry(item).State = EntityState.Modified;
+
+                        foreach (var audit in item.AuditHistory)
+                        {
+                            var auditExists = await context.AuditEntries.AnyAsync(e => e.Id == audit.Id);
+                            if (!auditExists)
+                            {
+                                context.Entry(audit).State = EntityState.Added;
+                            }
+
+                        }
                     }
                     else
                     {
