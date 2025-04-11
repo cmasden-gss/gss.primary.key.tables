@@ -9,10 +9,10 @@
     <!-- DevExpress Grid displaying the ColumnRow data -->
     <div class="grid-container">
         <DxGrid @ref="Grid"
-            PageSize="100"
-                PageSizeSelectorVisible="true"
-                PageSizeSelectorItems="@(new int[] { 100, 250, 500 })"
-                PageSizeSelectorAllRowsItemVisible="true"
+        PageSize="100"
+        PageSizeSelectorVisible="true"
+        PageSizeSelectorItems="@(new int[] { 100, 250, 500 })"
+        PageSizeSelectorAllRowsItemVisible="true"
         Data="DataSourceSorted"
         KeyFieldName="RowId"
         ValidationEnabled="false"
@@ -43,7 +43,7 @@
                 <DxGridDataColumn FieldName="ForeignKeyField" Caption="Foreign Key Field" MinWidth="120" />
                 <DxGridCommandColumn Width="40px" NewButtonVisible="false">
                     <CellDisplayTemplate>
-@*                         <div class="text-center">
+                        @*                         <div class="text-center">
                             <DxButton IconCssClass="grid-icon grid-icon-delete"
                               CssClass="grid-delete-btn"
                               RenderStyle="ButtonRenderStyle.Link"
@@ -56,7 +56,7 @@
                                 <i class="bi bi-trash-fill"></i>
                             </button>
                         </div>
-                        
+
                     </CellDisplayTemplate>
                     <CellEditTemplate>
                         <div class="text-center">
@@ -145,6 +145,8 @@
     Dictionary<ColumnRow, DataChange> UnsavedChanges { get; } = new();
     bool BatchItemsEnabled => UnsavedChanges.Count > 0 || Grid.IsEditing();
 
+    string currentUser => "TestUser";
+
     // Boolean flags for modal display.
     bool ShowSaveModalFlag { get; set; }
     bool ShowRevertModalFlag { get; set; }
@@ -226,18 +228,71 @@
     {
         var editedRow = (ColumnRow)e.EditModel;
         var originalRow = (ColumnRow)e.DataItem;
+
         if (e.IsNew)
         {
             DataSource.Add(editedRow);
+            // Create one audit record for a new column.
+            editedRow.AuditHistory.Add(new AuditEntry
+                {
+                    ChangedOn = DateTime.Now,
+                    ChangedBy = currentUser,
+                    Description = "New column added",
+                    ColumnName = editedRow.ColumnName,
+                    PreviousValue = string.Empty,
+                    NewValue = editedRow.ColumnName
+                });
             UnsavedChanges[editedRow] = new(DataChangeType.Addition, new HashSet<string>());
         }
         else
         {
+            // List the property names to audit.
+            var propertiesToAudit = new[]
+            {
+            "TableName",
+            "ColumnName",
+            "IsNone",
+            "IsMasterKey",
+            "IsPrimaryKey",
+            "IsForeignKey",
+            "ForeignKeyTable",
+            "ForeignKeyField"
+        };
+
+            // Loop through each property and compare values.
+            foreach (var propName in propertiesToAudit)
+            {
+                var prop = typeof(ColumnRow).GetProperty(propName);
+                if (prop != null)
+                {
+                    var origVal = prop.GetValue(originalRow);
+                    var editVal = prop.GetValue(editedRow);
+                    string origStr = origVal?.ToString() ?? string.Empty;
+                    string editStr = editVal?.ToString() ?? string.Empty;
+                    if (!string.Equals(origStr, editStr, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Create a new audit entry for this change.
+                        originalRow.AuditHistory.Add(new AuditEntry
+                            {
+                                ChangedOn = DateTime.Now,
+                                ChangedBy = currentUser,
+                                Description = $"{propName} changed",
+                                ColumnName = editedRow.ColumnName,
+                                PreviousValue = origStr,
+                                NewValue = editStr
+                            });
+                        // Update the original property.
+                        prop.SetValue(originalRow, editVal);
+                    }
+                }
+            }
+
+            // Optionally, update unsaved-changes tracking based on changed fields.
             var changedFields = ApplyModifiedFields(editedRow, originalRow);
             if (changedFields.Count > 0)
             {
-                if (UnsavedChanges.TryGetValue(originalRow, out var changes))
-                    changes.ChangedFields.UnionWith(changedFields);
+                if (UnsavedChanges.TryGetValue(originalRow, out var record))
+                    record.ChangedFields.UnionWith(changedFields);
                 else
                     UnsavedChanges.Add(originalRow, new(DataChangeType.Modification, changedFields));
             }
