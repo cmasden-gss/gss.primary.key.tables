@@ -31,6 +31,23 @@ namespace PrimaryKeys.Application.Models
         public virtual List<AuditEntry> AuditHistory { get; set; } = new List<AuditEntry>();
 
         // Computed property for display purposes.
-        public string RowId => $"{TableName}-{ColumnName}-{ColumnIndex}";
+        //public string RowId => $"{TableName}-{ColumnName}-{ColumnIndex}";
+
+        public ColumnRow Clone()
+        {
+            return new ColumnRow
+            {
+                ColumnIndex = this.ColumnIndex,
+                TableName = this.TableName,
+                ColumnName = this.ColumnName,
+                IsNone = this.IsNone,
+                IsMasterKey = this.IsMasterKey,
+                IsPrimaryKey = this.IsPrimaryKey,
+                IsForeignKey = this.IsForeignKey,
+                ForeignKeyTable = this.ForeignKeyTable,
+                ForeignKeyField = this.ForeignKeyField,
+                // Note: AuditHistory is not cloned because we want a clean slate for comparison.
+            };
+        }
     }
 }
