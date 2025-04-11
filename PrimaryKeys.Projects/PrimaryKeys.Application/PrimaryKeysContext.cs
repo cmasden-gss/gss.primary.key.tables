@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PrimaryKeys.Application.Models;
 
-namespace SharedProject.Data
+namespace PrimaryKeys.Application
 {
     // EF Core Context
     public class PrimaryKeysContext : DbContext

@@ -1,6 +1,7 @@
 ﻿@page "/"
 @using System.Text.Json
 @using System.Text.Json.Serialization
+@using PrimaryKeys.Application.Models
 @inject NavigationManager Navigation
 
 <div class="container my-4">
@@ -387,36 +388,5 @@
         string newJson = JsonSerializer.Serialize(sorted, new JsonSerializerOptions { WriteIndented = true });
         await File.WriteAllTextAsync(schemaFilePath, newJson);
         Console.WriteLine($"Schema saved to {schemaFilePath}");
-    }
-
-    // For demonstration, load mock data.
-    // Change tracking record already defined above.
-    // -------------------------
-    // Change tracking record
-    // -------------------------
-    public class ColumnRow
-    {
-        public string RowId => $"{TableName}-{ColumnName}-{ColumnIndex}";
-        public int ColumnIndex { get; set; }
-        public string TableName { get; set; }
-        public string ColumnName { get; set; }
-        public bool IsNone { get; set; }
-        public bool IsMasterKey { get; set; }
-        public bool IsPrimaryKey { get; set; }
-        public bool IsForeignKey { get; set; }
-        public string ForeignKeyTable { get; set; }
-        public string ForeignKeyField { get; set; }
-        public List<AuditEntry> AuditHistory { get; set; } = new List<AuditEntry>();
-    }
-
-    public class AuditEntry
-    {
-        public DateTime ChangedOn { get; set; }
-        public string ChangedBy { get; set; }
-        public string Description { get; set; }
-
-        public string ColumnName { get; set; }
-        public string PreviousValue { get; set; }
-        public string NewValue { get; set; }
     }
 }

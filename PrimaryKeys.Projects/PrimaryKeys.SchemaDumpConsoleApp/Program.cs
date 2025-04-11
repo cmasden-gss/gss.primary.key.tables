@@ -13,16 +13,11 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Pervasive.Data.SqlClient;
+using PrimaryKeys.Application.Models;
 using TableRelations.Application.Infrastructure;
 
-// -------------------------------
-// NAMESPACE: SchemaUpdateApp
-// -------------------------------
-namespace SchemaUpdateApp
+namespace PrimaryKeys.SchemaDumpConsoleApp
 {
-    // ======================================================
-    // ORIGINAL ACTIAN CLIENT CODE (from your source)
-    // ======================================================
     public class ActianClient
     {
         private readonly string _connectionString;
@@ -35,15 +30,6 @@ namespace SchemaUpdateApp
 
         public PsqlConnection DbConnection
         {
-            //get
-            //{
-            //    if (_dbConnection != null)
-            //        return _dbConnection;
-            //    var providerFactory = DbProviderFactories.GetFactory("Pervasive.Data.SqlClient");
-            //    _dbConnection = providerFactory.CreateConnection();
-            //    _dbConnection.ConnectionString = _connectionString;
-            //    return _dbConnection;
-            //}
             get
             {
                 if (_dbConnection != null)
@@ -245,9 +231,6 @@ namespace SchemaUpdateApp
         public List<string> ForeignKeyTableAndColumnNames { get; set; } = new List<string>();
     }
 
-    // ======================================================
-    // TABLE RELATIONS: KeyMapperRoutine (from your source)
-    // ======================================================
     public static class KeyMapperRoutine
     {
         public static void Routine()
@@ -348,7 +331,6 @@ namespace SchemaUpdateApp
             string outputJsonFilePath = Path.Combine(outputDir, "table.relations.information.version.json");
             string jsonString = Newtonsoft.Json.JsonConvert.SerializeObject(sqlTableInformationList, Newtonsoft.Json.Formatting.Indented);
             File.WriteAllText(outputJsonFilePath, jsonString);
-            // (Text file output omitted for brevity)
         }
     }
 
@@ -373,37 +355,6 @@ namespace SchemaUpdateApp
         }
     }
 
-    // ======================================================
-    // TARGET OBJECTS (for our audit schema)
-    // ======================================================
-    public class ColumnRow
-    {
-        public int ColumnIndex { get; set; }
-        public string TableName { get; set; }
-        public string ColumnName { get; set; }
-        public bool IsNone { get; set; }
-        public bool IsMasterKey { get; set; }
-        public bool IsPrimaryKey { get; set; }
-        public bool IsForeignKey { get; set; }
-        public string ForeignKeyTable { get; set; }
-        public string ForeignKeyField { get; set; }
-        public List<AuditEntry> AuditHistory { get; set; } = new List<AuditEntry>();
-    }
-
-    public class AuditEntry
-    {
-        public DateTime ChangedOn { get; set; }
-        public string ChangedBy { get; set; }
-        public string Description { get; set; }
-
-        public string ColumnName { get; set; }
-        public string PreviousValue { get; set; }
-        public string NewValue { get; set; }
-    }
-
-    // ======================================================
-    // HELPER: SCHEMA CONVERSION & COMPARISON
-    // ======================================================
     public static class SchemaConversion
     {
         /// <summary>
@@ -442,57 +393,6 @@ namespace SchemaUpdateApp
             }
             return rows;
         }
-
-        /// <summary>
-        /// Compares an old schema with a new schema and adds audit entries for new or changed columns.
-        /// </summary>
-        public static void UpdateSchemaWithAudit(List<ColumnRow> oldSchema, List<ColumnRow> newSchema, string changedBy)
-        {
-            foreach (var newCol in newSchema)
-            {
-                var oldCol = oldSchema.FirstOrDefault(c => c.ColumnName.Equals(newCol.ColumnName, StringComparison.OrdinalIgnoreCase));
-                if (oldCol == null)
-                {
-                    newCol.AuditHistory.Add(new AuditEntry
-                    {
-                        ChangedOn = DateTime.Now,
-                        ChangedBy = changedBy,
-                        Description = "New column added",
-                        ColumnName = newCol.ColumnName,
-                        PreviousValue = string.Empty,
-                        NewValue = newCol.ColumnName
-                    });
-                }
-                else
-                {
-                    if (newCol.IsPrimaryKey != oldCol.IsPrimaryKey)
-                    {
-                        newCol.AuditHistory.Add(new AuditEntry
-                        {
-                            ChangedOn = DateTime.Now,
-                            ChangedBy = changedBy,
-                            Description = "PrimaryKey flag changed",
-                            ColumnName = oldCol.ColumnName,
-                            PreviousValue = oldCol.IsPrimaryKey.ToString(),
-                            NewValue = newCol.IsPrimaryKey.ToString()
-                        });
-                    }
-                    if (newCol.IsForeignKey != oldCol.IsForeignKey)
-                    {
-                        newCol.AuditHistory.Add(new AuditEntry
-                        {
-                            ChangedOn = DateTime.Now,
-                            ChangedBy = changedBy,
-                            Description = "ForeignKey flag changed",
-                            ColumnName = oldCol.ColumnName,
-                            PreviousValue = oldCol.IsForeignKey.ToString(),
-                            NewValue = newCol.IsForeignKey.ToString()
-                        });
-                    }
-                    // Additional comparisons can be added here.
-                }
-            }
-        }
     }
 
     // ======================================================
@@ -504,29 +404,6 @@ namespace SchemaUpdateApp
     /// </summary>
     public static class TableRelationsHelper
     {
-        //public static void ApplyTableRelations(Dictionary<string, List<ColumnRow>> schemas, List<SqlTableInformation> relations)
-        //{
-        //    foreach (var table in schemas.Keys)
-        //    {
-        //        var relation = relations.SingleOrDefault(r => r.Name.Equals(table, StringComparison.OrdinalIgnoreCase));
-        //        if (relation == null) continue;
-        //        foreach (var col in schemas[table])
-        //        {
-        //            var colRelation = relation.SqlColumns.SingleOrDefault(rc => rc.Name.Equals(col.ColumnName, StringComparison.OrdinalIgnoreCase));
-        //            if (colRelation != null && colRelation.ForeignKeyTableAndColumnNames != null && colRelation.ForeignKeyTableAndColumnNames.Count > 0)
-        //            {
-        //                var fk = colRelation.ForeignKeyTableAndColumnNames.First();
-        //                var parts = fk.Split('.');
-        //                if (parts.Length == 2)
-        //                {
-        //                    col.ForeignKeyTable = parts[0];
-        //                    col.ForeignKeyField = parts[1];
-        //                }
-        //            }
-        //        }
-        //    }
-        //}
-
         /// <summary>
         /// Reads the table relation JSON file into a list of SqlTableInformation.
         /// </summary>
@@ -609,10 +486,6 @@ namespace SchemaUpdateApp
                 List<ColumnRow> columnRows = SchemaConversion.ConvertToColumnRows(liveSchema);
                 NewSchemas.AddRange(columnRows);
             }
-
-            // ----- 3. Apply table relations (foreign key, mask info, etc.) to the new schemas -----
-            //chatgpt duplicated dumb.
-            //TableRelationsHelper.ApplyTableRelations(NewSchemas, tableRelations);
 
             // ----- 4. Load previous schema (if exists) from file -----
             if (File.Exists(schemaFilePath))

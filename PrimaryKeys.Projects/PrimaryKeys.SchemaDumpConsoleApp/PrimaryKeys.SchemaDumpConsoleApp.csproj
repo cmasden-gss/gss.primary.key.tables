@@ -21,6 +21,7 @@
 	</ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\PrimaryKeys.Application\PrimaryKeys.Application.csproj" />
     <ProjectReference Include="..\TableRelations.Application\TableRelations.Application.csproj" />
   </ItemGroup>
 
