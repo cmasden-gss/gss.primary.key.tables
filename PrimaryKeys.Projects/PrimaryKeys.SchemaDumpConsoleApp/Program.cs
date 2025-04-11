@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Pervasive.Data.SqlClient;
+using PrimaryKeys.Application;
 using PrimaryKeys.Application.Models;
 using TableRelations.Application.Infrastructure;
 
@@ -487,84 +488,248 @@ namespace PrimaryKeys.SchemaDumpConsoleApp
                 NewSchemas.AddRange(columnRows);
             }
 
+            // ----- 4. Use DbContext
+            await UpdateDbContextFromNewSchemasAsync(NewSchemas);
+
             // ----- 4. Load previous schema (if exists) from file -----
-            if (File.Exists(schemaFilePath))
-            {
-                try
-                {
-                    string jsonOld = await File.ReadAllTextAsync(schemaFilePath);
-                    var loaded = JsonSerializer.Deserialize<List<ColumnRow>>(jsonOld);
-                    OldSchemas = loaded != null ? loaded.OrderBy(x => x.TableName).ThenBy(x => x.ColumnIndex).ToList() : new List<ColumnRow>();
-                    Console.WriteLine("\nLoaded previous schema from file.");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("Error reading previous schema: " + ex.Message);
-                    OldSchemas = new List<ColumnRow>();
-                }
-            }
-            else
-            {
-                Console.WriteLine("\nNo previous schema file found; first run.");
-            }
+            //if (File.Exists(schemaFilePath))
+            //{
+            //    try
+            //    {
+            //        string jsonOld = await File.ReadAllTextAsync(schemaFilePath);
+            //        var loaded = JsonSerializer.Deserialize<List<ColumnRow>>(jsonOld);
+            //        OldSchemas = loaded != null ? loaded.OrderBy(x => x.TableName).ThenBy(x => x.ColumnIndex).ToList() : new List<ColumnRow>();
+            //        Console.WriteLine("\nLoaded previous schema from file.");
+            //    }
+            //    catch (Exception ex)
+            //    {
+            //        Console.WriteLine("Error reading previous schema: " + ex.Message);
+            //        OldSchemas = new List<ColumnRow>();
+            //    }
+            //}
+            //else
+            //{
+            //    Console.WriteLine("\nNo previous schema file found; first run.");
+            //}
 
-            // ----- 5. Compare new schemas to old schemas and add audit entries -----
-            string currentUser = Environment.UserName;
-            foreach (var newCol in NewSchemas)
-            {
-                // Find matching record by TableName and ColumnName.
-                var oldCol = OldSchemas.FirstOrDefault(c =>
-                    c.TableName.Equals(newCol.TableName, StringComparison.OrdinalIgnoreCase) &&
-                    c.ColumnName.Equals(newCol.ColumnName, StringComparison.OrdinalIgnoreCase));
-                if (oldCol == null)
-                {
-                    newCol.AuditHistory.Add(new AuditEntry
-                    {
-                        ChangedOn = DateTime.Now,
-                        ChangedBy = currentUser,
-                        Description = "New column added",
-                        ColumnName = newCol.ColumnName,
-                        PreviousValue = string.Empty,
-                        NewValue = newCol.ColumnName
-                    });
-                }
-                else
-                {
-                    if (newCol.IsPrimaryKey != oldCol.IsPrimaryKey)
-                    {
-                        newCol.AuditHistory.Add(new AuditEntry
-                        {
-                            ChangedOn = DateTime.Now,
-                            ChangedBy = currentUser,
-                            Description = "PrimaryKey flag changed",
-                            ColumnName = newCol.ColumnName,
-                            PreviousValue = oldCol.IsPrimaryKey.ToString(),
-                            NewValue = newCol.IsPrimaryKey.ToString()
-                        });
-                    }
-                    if (newCol.IsForeignKey != oldCol.IsForeignKey)
-                    {
-                        newCol.AuditHistory.Add(new AuditEntry
-                        {
-                            ChangedOn = DateTime.Now,
-                            ChangedBy = currentUser,
-                            Description = "ForeignKey flag changed",
-                            ColumnName = newCol.ColumnName,
-                            PreviousValue = oldCol.IsForeignKey.ToString(),
-                            NewValue = newCol.IsForeignKey.ToString()
-                        });
-                    }
-                    // Additional field comparisons can be added here.
-                }
-            }
+            //// ----- 5. Compare new schemas to old schemas and add audit entries -----
+            //string currentUser = Environment.UserName;
+            //foreach (var newCol in NewSchemas)
+            //{
+            //    // Find matching record by TableName and ColumnName.
+            //    var oldCol = OldSchemas.FirstOrDefault(c =>
+            //        c.TableName.Equals(newCol.TableName, StringComparison.OrdinalIgnoreCase) &&
+            //        c.ColumnName.Equals(newCol.ColumnName, StringComparison.OrdinalIgnoreCase));
+            //    if (oldCol == null)
+            //    {
+            //        newCol.AuditHistory.Add(new AuditEntry
+            //        {
+            //            ChangedOn = DateTime.Now,
+            //            ChangedBy = currentUser,
+            //            Description = "New column added",
+            //            ColumnName = newCol.ColumnName,
+            //            PreviousValue = string.Empty,
+            //            NewValue = newCol.ColumnName
+            //        });
+            //    }
+            //    else
+            //    {
+            //        if (newCol.IsPrimaryKey != oldCol.IsPrimaryKey)
+            //        {
+            //            newCol.AuditHistory.Add(new AuditEntry
+            //            {
+            //                ChangedOn = DateTime.Now,
+            //                ChangedBy = currentUser,
+            //                Description = "PrimaryKey flag changed",
+            //                ColumnName = newCol.ColumnName,
+            //                PreviousValue = oldCol.IsPrimaryKey.ToString(),
+            //                NewValue = newCol.IsPrimaryKey.ToString()
+            //            });
+            //        }
+            //        if (newCol.IsForeignKey != oldCol.IsForeignKey)
+            //        {
+            //            newCol.AuditHistory.Add(new AuditEntry
+            //            {
+            //                ChangedOn = DateTime.Now,
+            //                ChangedBy = currentUser,
+            //                Description = "ForeignKey flag changed",
+            //                ColumnName = newCol.ColumnName,
+            //                PreviousValue = oldCol.IsForeignKey.ToString(),
+            //                NewValue = newCol.IsForeignKey.ToString()
+            //            });
+            //        }
+            //        // Additional field comparisons can be added here.
+            //    }
+            //}
 
-            // 6. Save the updated NewSchemas back to file.
-            var sortedNew = NewSchemas.OrderBy(x => x.TableName).ThenBy(x => x.ColumnIndex).ToList();
-            string newJson = JsonSerializer.Serialize(sortedNew, new JsonSerializerOptions { WriteIndented = true });
-            await File.WriteAllTextAsync(schemaFilePath, newJson);
-            Console.WriteLine($"\nUpdated schema saved to {schemaFilePath}");
+            //// 6. Save the updated NewSchemas back to file.
+            //var sortedNew = NewSchemas.OrderBy(x => x.TableName).ThenBy(x => x.ColumnIndex).ToList();
+            //string newJson = JsonSerializer.Serialize(sortedNew, new JsonSerializerOptions { WriteIndented = true });
+            //await File.WriteAllTextAsync(schemaFilePath, newJson);
+            //Console.WriteLine($"\nUpdated schema saved to {schemaFilePath}");
 
             Console.ReadKey();
+        }
+
+        public static async Task UpdateDbContextFromNewSchemasAsync(List<ColumnRow> newSchemas)
+        {
+            var ConnectionString =
+       "Server=gss2k19awssql;Database=IHOP_Net;User Id=PrimaryKeyTool;Password=zx2pHC&Q$M2z56g;";
+
+            var options = new DbContextOptionsBuilder<PrimaryKeysContext>()
+                              .UseSqlServer(ConnectionString)
+                              .Options;
+
+            using (var context = new PrimaryKeysContext(options))
+            {
+                // Ensure the database and tables exist.
+                // context.Database.EnsureCreated();
+
+                // Load the current schema records from the database.
+                var existingRecords = await context.ColumnRows
+                                            .Include(cr => cr.AuditHistory)
+                                            .ToListAsync();
+
+                // Get the current user (update with your actual authentication logic)
+                string currentUser = "Importer";//Environment.UserName;
+
+                // Process each new schema record.
+                foreach (var newCol in newSchemas)
+                {
+                    // Attempt to match an existing record by TableName and ColumnName.
+                    var existing = existingRecords.FirstOrDefault(c =>
+                                     c.TableName.Equals(newCol.TableName, StringComparison.OrdinalIgnoreCase) &&
+                                     c.ColumnName.Equals(newCol.ColumnName, StringComparison.OrdinalIgnoreCase));
+
+                    if (existing == null)
+                    {
+                        // No existing record: treat as a new column.
+                        newCol.AuditHistory.Add(new AuditEntry
+                        {
+                            ChangedOn = DateTime.Now,
+                            ChangedBy = currentUser,
+                            Description = "New column added",
+                            ColumnName = newCol.ColumnName,
+                            PreviousValue = string.Empty,
+                            NewValue = newCol.ColumnName
+                        });
+                        context.ColumnRows.Add(newCol);
+                    }
+                    else
+                    {
+                        // For each property to audit, check for changes and, if any, create a distinct audit entry.
+                        // (You can add or remove property comparisons as needed.)
+                        if (!existing.TableName.Equals(newCol.TableName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            existing.AuditHistory.Add(new AuditEntry
+                            {
+                                ChangedOn = DateTime.Now,
+                                ChangedBy = currentUser,
+                                Description = "Table name changed",
+                                ColumnName = existing.ColumnName,
+                                PreviousValue = existing.TableName,
+                                NewValue = newCol.TableName
+                            });
+                            existing.TableName = newCol.TableName;
+                        }
+                        if (!existing.ColumnName.Equals(newCol.ColumnName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            existing.AuditHistory.Add(new AuditEntry
+                            {
+                                ChangedOn = DateTime.Now,
+                                ChangedBy = currentUser,
+                                Description = "Column name changed",
+                                ColumnName = existing.ColumnName,
+                                PreviousValue = existing.ColumnName,
+                                NewValue = newCol.ColumnName
+                            });
+                            existing.ColumnName = newCol.ColumnName;
+                        }
+                        if (existing.IsNone != newCol.IsNone)
+                        {
+                            existing.AuditHistory.Add(new AuditEntry
+                            {
+                                ChangedOn = DateTime.Now,
+                                ChangedBy = currentUser,
+                                Description = "IsNone flag changed",
+                                ColumnName = existing.ColumnName,
+                                PreviousValue = existing.IsNone.ToString(),
+                                NewValue = newCol.IsNone.ToString()
+                            });
+                            existing.IsNone = newCol.IsNone;
+                        }
+                        if (existing.IsMasterKey != newCol.IsMasterKey)
+                        {
+                            existing.AuditHistory.Add(new AuditEntry
+                            {
+                                ChangedOn = DateTime.Now,
+                                ChangedBy = currentUser,
+                                Description = "MasterKey flag changed",
+                                ColumnName = existing.ColumnName,
+                                PreviousValue = existing.IsMasterKey.ToString(),
+                                NewValue = newCol.IsMasterKey.ToString()
+                            });
+                            existing.IsMasterKey = newCol.IsMasterKey;
+                        }
+                        if (existing.IsPrimaryKey != newCol.IsPrimaryKey)
+                        {
+                            existing.AuditHistory.Add(new AuditEntry
+                            {
+                                ChangedOn = DateTime.Now,
+                                ChangedBy = currentUser,
+                                Description = "PrimaryKey flag changed",
+                                ColumnName = existing.ColumnName,
+                                PreviousValue = existing.IsPrimaryKey.ToString(),
+                                NewValue = newCol.IsPrimaryKey.ToString()
+                            });
+                            existing.IsPrimaryKey = newCol.IsPrimaryKey;
+                        }
+                        if (existing.IsForeignKey != newCol.IsForeignKey)
+                        {
+                            existing.AuditHistory.Add(new AuditEntry
+                            {
+                                ChangedOn = DateTime.Now,
+                                ChangedBy = currentUser,
+                                Description = "ForeignKey flag changed",
+                                ColumnName = existing.ColumnName,
+                                PreviousValue = existing.IsForeignKey.ToString(),
+                                NewValue = newCol.IsForeignKey.ToString()
+                            });
+                            existing.IsForeignKey = newCol.IsForeignKey;
+                        }
+                        if (!string.Equals(existing.ForeignKeyTable, newCol.ForeignKeyTable, StringComparison.OrdinalIgnoreCase))
+                        {
+                            existing.AuditHistory.Add(new AuditEntry
+                            {
+                                ChangedOn = DateTime.Now,
+                                ChangedBy = currentUser,
+                                Description = "ForeignKeyTable changed",
+                                ColumnName = existing.ColumnName,
+                                PreviousValue = existing.ForeignKeyTable,
+                                NewValue = newCol.ForeignKeyTable
+                            });
+                            existing.ForeignKeyTable = newCol.ForeignKeyTable;
+                        }
+                        if (!string.Equals(existing.ForeignKeyField, newCol.ForeignKeyField, StringComparison.OrdinalIgnoreCase))
+                        {
+                            existing.AuditHistory.Add(new AuditEntry
+                            {
+                                ChangedOn = DateTime.Now,
+                                ChangedBy = currentUser,
+                                Description = "ForeignKeyField changed",
+                                ColumnName = existing.ColumnName,
+                                PreviousValue = existing.ForeignKeyField,
+                                NewValue = newCol.ForeignKeyField
+                            });
+                            existing.ForeignKeyField = newCol.ForeignKeyField;
+                        }
+                    }
+                }
+
+                // Save all changes to the database.
+                await context.SaveChangesAsync();
+                Console.WriteLine("Database updated with new schema and audit history.");
+            }
         }
     }
 }
