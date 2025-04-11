@@ -691,29 +691,6 @@ namespace SchemaUpdateApp
             await File.WriteAllTextAsync(schemaFilePath, newJson);
             Console.WriteLine($"\nUpdated schema saved to {schemaFilePath}");
 
-            // ----- 7. Output the updated schema with audit information -----
-            //Console.WriteLine("\n=== Updated Schema with Audit Information ===");
-            //foreach (var kvp in NewSchemas)
-            //{
-            //    Console.WriteLine($"\nTable: {kvp.Key}");
-            //    foreach (var col in kvp.Value)
-            //    {
-            //        Console.WriteLine($"  Column: {col.ColumnName}");
-            //        if (col.AuditHistory.Any())
-            //        {
-            //            foreach (var audit in col.AuditHistory)
-            //            {
-            //                Console.WriteLine($"    {audit.ChangedOn} - {audit.ChangedBy}: {audit.Description} (from '{audit.PreviousValue}' to '{audit.NewValue}')");
-            //            }
-            //        }
-            //        else
-            //        {
-            //            Console.WriteLine("    No changes.");
-            //        }
-            //    }
-            //}
-
-            Console.WriteLine("\nSchema update process complete. Press any key to exit.");
             Console.ReadKey();
         }
     }

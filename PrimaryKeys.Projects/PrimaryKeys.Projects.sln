@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PrimaryKeys.SchemaDumpConso
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TableRelations.Application", "TableRelations.Application\TableRelations.Application.csproj", "{DDF92AB0-B06A-339C-4F04-2F93CE760468}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PrimaryKeys.Application", "PrimaryKeys.Application\PrimaryKeys.Application.csproj", "{15D13D53-5BED-4D98-AAF3-A74E6801DC7E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{DDF92AB0-B06A-339C-4F04-2F93CE760468}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DDF92AB0-B06A-339C-4F04-2F93CE760468}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DDF92AB0-B06A-339C-4F04-2F93CE760468}.Release|Any CPU.Build.0 = Release|Any CPU
+		{15D13D53-5BED-4D98-AAF3-A74E6801DC7E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{15D13D53-5BED-4D98-AAF3-A74E6801DC7E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{15D13D53-5BED-4D98-AAF3-A74E6801DC7E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{15D13D53-5BED-4D98-AAF3-A74E6801DC7E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
