@@ -1,0 +1,358 @@
+﻿@page "/"
+@using System.Text.Json
+@using System.Text.Json.Serialization
+@inject NavigationManager Navigation
+
+<div class="container my-4">
+    <h1 class="mb-4">Schema Manager</h1>
+
+    <!-- DevExpress Grid displaying the ColumnRow data -->
+    <div class="grid-container">
+        <DxGrid @ref="Grid"
+                PageSize="12"
+                Data="DataSourceSorted"
+                KeyFieldName="RowId"
+                ValidationEnabled="false"
+                ShowFilterRow="true"
+                ShowSearchBox="true"
+                EditMode="GridEditMode.EditCell"
+                EditModelSaving="Grid_EditModelSaving"
+                CustomizeElement="Grid_CustomizeElement"
+                CustomizeEditModel="Grid_CustomizeEditModel"
+                ColumnResizeMode="GridColumnResizeMode.NextColumn"
+                TextWrapEnabled="false"
+                HighlightRowOnHover="true">
+            <ToolbarTemplate>
+                <DxToolbar ItemRenderStyleMode="ToolbarRenderStyleMode.Plain">
+                    <DxToolbarItem Text="New" Click="New_Click" IconCssClass="grid-toolbar-new" Enabled="true" />
+                    <DxToolbarItem Text="Submit" Click="Submit_Click" IconCssClass="grid-toolbar-save" Enabled="BatchItemsEnabled" BeginGroup="true" />
+                    <DxToolbarItem Text="Revert" Click="Revert_Click" IconCssClass="grid-toolbar-cancel" Enabled="BatchItemsEnabled" />
+                </DxToolbar>
+            </ToolbarTemplate>
+            <Columns>
+                <DxGridDataColumn FieldName="TableName" Caption="Table Name" MinWidth="100" />
+                <DxGridDataColumn FieldName="ColumnName" Caption="Column Name" MinWidth="100" />
+                <DxGridDataColumn FieldName="IsNone" Caption="None" MinWidth="80" />
+                <DxGridDataColumn FieldName="IsMasterKey" Caption="Master Key" MinWidth="80" />
+                <DxGridDataColumn FieldName="IsPrimaryKey" Caption="Primary Key" MinWidth="80" />
+                <DxGridDataColumn FieldName="IsForeignKey" Caption="Foreign Key" MinWidth="80" />
+                <DxGridDataColumn FieldName="ForeignKeyTable" Caption="Foreign Key Table" MinWidth="120" />
+                <DxGridDataColumn FieldName="ForeignKeyField" Caption="Foreign Key Field" MinWidth="120" />
+                <DxGridCommandColumn Width="40px" NewButtonVisible="false">
+                    <CellDisplayTemplate>
+                        <div class="text-center">
+                            <DxButton IconCssClass="grid-icon grid-icon-delete"
+                                      CssClass="grid-delete-btn"
+                                      RenderStyle="ButtonRenderStyle.Link"
+                                      aria-label="Delete"
+                                      Click="@(() => DeleteDataItem(context.DataItem))" />
+                        </div>
+                    </CellDisplayTemplate>
+                    <CellEditTemplate>
+                        <div class="text-center">
+                            <DxButton Enabled="false"
+                                      aria-label="Delete"
+                                      CssClass="grid-disabled-button"
+                                      IconCssClass="grid-icon grid-icon-delete"
+                                      RenderStyle="ButtonRenderStyle.Link" />
+                        </div>
+                    </CellEditTemplate>
+                </DxGridCommandColumn>
+            </Columns>
+            <!-- DetailRowTemplate shows audit history for a given row -->
+            <DetailRowTemplate Context="detailContext">
+                <DxGrid Data="((ColumnRow)detailContext.DataItem).AuditHistory"
+                        PageSize="5"
+                        ColumnResizeMode="GridColumnResizeMode.NextColumn"
+                        TextWrapEnabled="false">
+                    <Columns>
+                        <DxGridDataColumn FieldName="ChangedOn" Caption="Changed On" DisplayFormat="g" MinWidth="120" />
+                        <DxGridDataColumn FieldName="ChangedBy" Caption="Changed By" MinWidth="100" />
+                        <DxGridDataColumn FieldName="Description" Caption="Description" MinWidth="150" />
+                        <DxGridDataColumn FieldName="PreviousValue" Caption="Previous" MinWidth="100" />
+                        <DxGridDataColumn FieldName="NewValue" Caption="New" MinWidth="100" />
+                    </Columns>
+                </DxGrid>
+            </DetailRowTemplate>
+        </DxGrid>
+    </div>
+
+    <!-- Save Confirmation Modal -->
+    @if (ShowSaveModalFlag)
+    {
+        <div class="modal fade show" style="display:block;" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Confirm Save</h5>
+                        <button type="button" class="btn-close" aria-label="Close" @onclick="CloseSaveModal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Are you sure you want to save all changes?</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseSaveModal">Cancel</button>
+                        <button type="button" class="btn btn-primary" @onclick="ConfirmSave">Save</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-backdrop fade show"></div>
+        </div>
+    }
+
+    <!-- Revert Confirmation Modal -->
+    @if (ShowRevertModalFlag)
+    {
+        <div class="modal fade show" style="display:block;" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Confirm Revert</h5>
+                        <button type="button" class="btn-close" aria-label="Close" @onclick="CloseRevertModal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Are you sure you want to revert changes and reload data from file?</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseRevertModal">Cancel</button>
+                        <button type="button" class="btn btn-danger" @onclick="ConfirmRevert">Revert</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-backdrop fade show"></div>
+        </div>
+    }
+</div>
+
+@code {
+    IGrid Grid { get; set; }
+
+    // Main data source of ColumnRow objects.
+    IList<ColumnRow> DataSource { get; set; } = new List<ColumnRow>();
+
+    // Sorted data source: by TableName then ColumnIndex.
+    IEnumerable<ColumnRow> DataSourceSorted => DataSource.OrderBy(x => x.TableName).ThenBy(x => x.ColumnIndex);
+
+    // Change tracking
+    Dictionary<ColumnRow, DataChange> UnsavedChanges { get; } = new();
+    bool BatchItemsEnabled => UnsavedChanges.Count > 0 || Grid.IsEditing();
+
+    // Boolean flags for modal display.
+    bool ShowSaveModalFlag { get; set; }
+    bool ShowRevertModalFlag { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataFromFileAsync();
+    }
+
+    // ---------- Modal Handlers ----------
+    void OpenSaveModal() => ShowSaveModalFlag = true;
+    void CloseSaveModal() => ShowSaveModalFlag = false;
+
+    void OpenRevertModal() => ShowRevertModalFlag = true;
+    void CloseRevertModal() => ShowRevertModalFlag = false;
+
+    async Task ConfirmSave()
+    {
+        // In a real app, submit changes to the database.
+        UnsavedChanges.Clear();
+        CloseSaveModal();
+        await SaveDataToFileAsync();
+    }
+
+    async Task ConfirmRevert()
+    {
+        await Grid.CancelEditAsync();
+        CloseRevertModal();
+        await LoadDataFromFileAsync();
+    }
+
+    async Task Submit_Click()
+    {
+        // Instead of immediate save, display confirmation modal.
+        OpenSaveModal();
+        await Task.CompletedTask;
+    }
+
+    async Task Revert_Click()
+    {
+        OpenRevertModal();
+        await Task.CompletedTask;
+    }
+
+    async Task New_Click()
+    {
+        await Grid.StartEditNewRowAsync();
+    }
+
+    // ---------- Grid Event Handlers ----------
+    void Grid_CustomizeElement(GridCustomizeElementEventArgs ea)
+    {
+        if (ea.ElementType == GridElementType.DataCell)
+        {
+            var rowData = (ColumnRow)Grid.GetDataItem(ea.VisibleIndex);
+            if (rowData != null && UnsavedChanges.TryGetValue(rowData, out var changes))
+            {
+                var col = (IGridDataColumn)ea.Column;
+                if (changes.Type == DataChangeType.Addition || changes.ChangedFields.Contains(col.FieldName))
+                    ea.CssClass = "grid-modified-cell";
+            }
+        }
+    }
+
+    void Grid_CustomizeEditModel(GridCustomizeEditModelEventArgs e)
+    {
+        if (e.IsNew)
+        {
+            var newRow = (ColumnRow)e.EditModel;
+            newRow.ColumnIndex = DataSource.Any() ? DataSource.Max(x => x.ColumnIndex) + 1 : 1;
+            // For ordering purposes, we also assign ColumnIndex.
+            newRow.ColumnIndex = DataSource.Any() ? DataSource.Max(x => x.ColumnIndex) + 1 : 1;
+            newRow.TableName = "NEW_TABLE_HERE";
+            newRow.ColumnName = "NEW_COLUMN_HERE";
+        }
+    }
+
+    void Grid_EditModelSaving(GridEditModelSavingEventArgs e)
+    {
+        var editedRow = (ColumnRow)e.EditModel;
+        var originalRow = (ColumnRow)e.DataItem;
+        if (e.IsNew)
+        {
+            DataSource.Add(editedRow);
+            UnsavedChanges[editedRow] = new(DataChangeType.Addition, new HashSet<string>());
+        }
+        else
+        {
+            var changedFields = ApplyModifiedFields(editedRow, originalRow);
+            if (changedFields.Count > 0)
+            {
+                if (UnsavedChanges.TryGetValue(originalRow, out var changes))
+                    changes.ChangedFields.UnionWith(changedFields);
+                else
+                    UnsavedChanges.Add(originalRow, new(DataChangeType.Modification, changedFields));
+            }
+        }
+    }
+
+    void DeleteDataItem(object dataItem)
+    {
+        var row = (ColumnRow)dataItem;
+        UnsavedChanges[row] = new(DataChangeType.Delete, new HashSet<string>());
+        DataSource.Remove(row);
+        Grid.Reload();
+    }
+
+    HashSet<string> ApplyModifiedFields(ColumnRow edited, ColumnRow original)
+    {
+        var changedFields = new HashSet<string>();
+        if (edited.TableName != original.TableName)
+        {
+            original.TableName = edited.TableName;
+            changedFields.Add(nameof(ColumnRow.TableName));
+        }
+        if (edited.ColumnName != original.ColumnName)
+        {
+            original.ColumnName = edited.ColumnName;
+            changedFields.Add(nameof(ColumnRow.ColumnName));
+        }
+        if (edited.IsNone != original.IsNone)
+        {
+            original.IsNone = edited.IsNone;
+            changedFields.Add(nameof(ColumnRow.IsNone));
+        }
+        if (edited.IsMasterKey != original.IsMasterKey)
+        {
+            original.IsMasterKey = edited.IsMasterKey;
+            changedFields.Add(nameof(ColumnRow.IsMasterKey));
+        }
+        if (edited.IsPrimaryKey != original.IsPrimaryKey)
+        {
+            original.IsPrimaryKey = edited.IsPrimaryKey;
+            changedFields.Add(nameof(ColumnRow.IsPrimaryKey));
+        }
+        if (edited.IsForeignKey != original.IsForeignKey)
+        {
+            original.IsForeignKey = edited.IsForeignKey;
+            changedFields.Add(nameof(ColumnRow.IsForeignKey));
+        }
+        if (edited.ForeignKeyTable != original.ForeignKeyTable)
+        {
+            original.ForeignKeyTable = edited.ForeignKeyTable;
+            changedFields.Add(nameof(ColumnRow.ForeignKeyTable));
+        }
+        if (edited.ForeignKeyField != original.ForeignKeyField)
+        {
+            original.ForeignKeyField = edited.ForeignKeyField;
+            changedFields.Add(nameof(ColumnRow.ForeignKeyField));
+        }
+        return changedFields;
+    }
+
+    record DataChange(DataChangeType Type, HashSet<string> ChangedFields);
+    enum DataChangeType { Modification, Addition, Delete }
+
+    // ---------- Data Save/Load from File ----------
+    private static readonly string schemaFilePath = "actiantableschema.json";
+    async Task LoadDataFromFileAsync()
+    {
+        if (File.Exists(schemaFilePath))
+        {
+            try
+            {
+                string jsonOld = await File.ReadAllTextAsync(schemaFilePath);
+                var loaded = JsonSerializer.Deserialize<List<ColumnRow>>(jsonOld);
+                DataSource = loaded != null ? loaded.OrderBy(x => x.TableName).ThenBy(x => x.ColumnIndex).ToList() : new List<ColumnRow>();
+                Console.WriteLine("Loaded schema from file.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error reading schema: " + ex.Message);
+                DataSource = new List<ColumnRow>();
+            }
+        }
+        else
+        {
+            Console.WriteLine("No schema file found; loading mock data.");
+        }
+    }
+
+    async Task SaveDataToFileAsync()
+    {
+        var sorted = DataSource.OrderBy(x => x.TableName).ThenBy(x => x.ColumnIndex);
+        string newJson = JsonSerializer.Serialize(sorted, new JsonSerializerOptions { WriteIndented = true });
+        await File.WriteAllTextAsync(schemaFilePath, newJson);
+        Console.WriteLine($"Schema saved to {schemaFilePath}");
+    }
+
+    // For demonstration, load mock data.
+    // Change tracking record already defined above.
+    // -------------------------
+    // Change tracking record
+    // -------------------------
+    public class ColumnRow
+    {
+        public int ColumnIndex { get; set; }
+        public string TableName { get; set; }
+        public string ColumnName { get; set; }
+        public bool IsNone { get; set; }
+        public bool IsMasterKey { get; set; }
+        public bool IsPrimaryKey { get; set; }
+        public bool IsForeignKey { get; set; }
+        public string ForeignKeyTable { get; set; }
+        public string ForeignKeyField { get; set; }
+        public List<AuditEntry> AuditHistory { get; set; } = new List<AuditEntry>();
+    }
+
+    public class AuditEntry
+    {
+        public DateTime ChangedOn { get; set; }
+        public string ChangedBy { get; set; }
+        public string Description { get; set; }
+
+        public string ColumnName { get; set; }
+        public string PreviousValue { get; set; }
+        public string NewValue { get; set; }
+    }
+}

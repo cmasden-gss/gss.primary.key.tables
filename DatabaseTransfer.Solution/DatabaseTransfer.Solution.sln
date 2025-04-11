@@ -1,0 +1,84 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29519.181
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Presentation", "Presentation", "{46752160-AEA0-4257-9F58-74941059E3A9}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Core", "Core", "{2B1A3467-237A-4470-9F3D-4F1D6E0E96DE}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Infrastructure", "Infrastructure", "{80A1A7A2-2268-430E-B144-0B491F4AB175}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DatabaseTransfer.Service", "Infrastructure\DatabaseTransfer.Service\DatabaseTransfer.Service.csproj", "{683FB893-5791-409A-9ABF-6178373CDB8C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{40F82929-1DA6-4C3E-B6B2-C0F8943D2362}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DatabaseTransfer.Application", "Core\DatabaseTransfer.Application\DatabaseTransfer.Application.csproj", "{0B2830E1-7A43-4B5E-948D-AD3AAF097D28}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DatabaseTransfer.SetupWizardUi", "Presentation\DatabaseTransfer.SetupWizardUi\DatabaseTransfer.SetupWizardUi.csproj", "{5B434AB7-ECA2-439D-BD59-308321C847D1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DatabaseTransfer.Application.Tests", "Tests\DatabaseTransfer.Application.Tests\DatabaseTransfer.Application.Tests.csproj", "{67429FB2-51AF-4F26-B0F7-1C12D1462E2A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DatabaseTransfer.DatabaseProvidersConsoleApp", "Presentation\DatabaseTransfer.DatabaseProvidersConsoleApp\DatabaseTransfer.DatabaseProvidersConsoleApp.csproj", "{6FE68148-1049-48AE-8473-45FA22E09CC7}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DatabaseTransfer.PostgresConnection.CoreConsoleApp", "Presentation\DatabaseTransfer.PostgresConnection.CoreConsoleApp\DatabaseTransfer.PostgresConnection.CoreConsoleApp.csproj", "{80273A92-3582-4D32-AC32-E10C6BB0FC1F}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DatabaseTransfer.DependenciesCheck.CoreConsoleApp", "Presentation\DatabaseTransfer.DependenciesCheck.CoreConsoleApp\DatabaseTransfer.DependenciesCheck.CoreConsoleApp.csproj", "{EF1A2390-A439-499B-9B34-8C17671CCCAA}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{5F4DA9BA-F0EB-4726-A445-6779FB89EE40}"
+	ProjectSection(SolutionItems) = preProject
+		enduser.readme.md = enduser.readme.md
+		readme.md = readme.md
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{683FB893-5791-409A-9ABF-6178373CDB8C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{683FB893-5791-409A-9ABF-6178373CDB8C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{683FB893-5791-409A-9ABF-6178373CDB8C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{683FB893-5791-409A-9ABF-6178373CDB8C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0B2830E1-7A43-4B5E-948D-AD3AAF097D28}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0B2830E1-7A43-4B5E-948D-AD3AAF097D28}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0B2830E1-7A43-4B5E-948D-AD3AAF097D28}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0B2830E1-7A43-4B5E-948D-AD3AAF097D28}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5B434AB7-ECA2-439D-BD59-308321C847D1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5B434AB7-ECA2-439D-BD59-308321C847D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5B434AB7-ECA2-439D-BD59-308321C847D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5B434AB7-ECA2-439D-BD59-308321C847D1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{67429FB2-51AF-4F26-B0F7-1C12D1462E2A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{67429FB2-51AF-4F26-B0F7-1C12D1462E2A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{67429FB2-51AF-4F26-B0F7-1C12D1462E2A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{67429FB2-51AF-4F26-B0F7-1C12D1462E2A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6FE68148-1049-48AE-8473-45FA22E09CC7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6FE68148-1049-48AE-8473-45FA22E09CC7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6FE68148-1049-48AE-8473-45FA22E09CC7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6FE68148-1049-48AE-8473-45FA22E09CC7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{80273A92-3582-4D32-AC32-E10C6BB0FC1F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{80273A92-3582-4D32-AC32-E10C6BB0FC1F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{80273A92-3582-4D32-AC32-E10C6BB0FC1F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{80273A92-3582-4D32-AC32-E10C6BB0FC1F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EF1A2390-A439-499B-9B34-8C17671CCCAA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EF1A2390-A439-499B-9B34-8C17671CCCAA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EF1A2390-A439-499B-9B34-8C17671CCCAA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EF1A2390-A439-499B-9B34-8C17671CCCAA}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{683FB893-5791-409A-9ABF-6178373CDB8C} = {80A1A7A2-2268-430E-B144-0B491F4AB175}
+		{0B2830E1-7A43-4B5E-948D-AD3AAF097D28} = {2B1A3467-237A-4470-9F3D-4F1D6E0E96DE}
+		{5B434AB7-ECA2-439D-BD59-308321C847D1} = {46752160-AEA0-4257-9F58-74941059E3A9}
+		{67429FB2-51AF-4F26-B0F7-1C12D1462E2A} = {40F82929-1DA6-4C3E-B6B2-C0F8943D2362}
+		{6FE68148-1049-48AE-8473-45FA22E09CC7} = {46752160-AEA0-4257-9F58-74941059E3A9}
+		{80273A92-3582-4D32-AC32-E10C6BB0FC1F} = {46752160-AEA0-4257-9F58-74941059E3A9}
+		{EF1A2390-A439-499B-9B34-8C17671CCCAA} = {46752160-AEA0-4257-9F58-74941059E3A9}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {86F1387C-2C75-4328-82F2-DA5D1EFA50E0}
+	EndGlobalSection
+EndGlobal

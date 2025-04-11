@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "TableRelations.ConsoleApp": {
+      "commandName": "Project",
+      "commandLineArgs": "44"
+    }
+  }
+}
