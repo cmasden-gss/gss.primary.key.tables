@@ -1,8 +1,11 @@
-﻿@page "/5"
+﻿@page "/"
 @using System.Text.Json
 @using System.Text.Json.Serialization
+@using PrimaryKeys.Application
 @using PrimaryKeys.Application.Models
+@using Microsoft.EntityFrameworkCore
 @inject NavigationManager Navigation
+@inject PrimaryKeysContext DBContext
 
 <div class="container my-4">
     <h1 class="mb-4">Schema Manager</h1>
@@ -10,22 +13,22 @@
     <!-- DevExpress Grid displaying the ColumnRow data -->
     <div class="grid-container">
         <DxGrid @ref="Grid"
-        PageSize="100"
-        PageSizeSelectorVisible="true"
-        PageSizeSelectorItems="@(new int[] { 100, 250, 500 })"
-        PageSizeSelectorAllRowsItemVisible="true"
-        Data="DataSourceSorted"
-        KeyFieldName="RowId"
-        ValidationEnabled="false"
-        ShowFilterRow="true"
-        ShowSearchBox="true"
-        EditMode="GridEditMode.EditCell"
-        EditModelSaving="Grid_EditModelSaving"
-        CustomizeElement="Grid_CustomizeElement"
-        CustomizeEditModel="Grid_CustomizeEditModel"
-        ColumnResizeMode="GridColumnResizeMode.NextColumn"
-        TextWrapEnabled="false"
-        HighlightRowOnHover="true">
+                PageSize="100"
+                PageSizeSelectorVisible="true"
+                PageSizeSelectorItems="@(new int[] { 100, 250, 500 })"
+                PageSizeSelectorAllRowsItemVisible="true"
+                Data="DataSourceSorted"
+                KeyFieldName="RowId"
+                ValidationEnabled="false"
+                ShowFilterRow="true"
+                ShowSearchBox="true"
+                EditMode="GridEditMode.EditCell"
+                EditModelSaving="Grid_EditModelSaving"
+                CustomizeElement="Grid_CustomizeElement"
+                CustomizeEditModel="Grid_CustomizeEditModel"
+                ColumnResizeMode="GridColumnResizeMode.NextColumn"
+                TextWrapEnabled="false"
+                HighlightRowOnHover="true">
             <ToolbarTemplate>
                 <DxToolbar ItemRenderStyleMode="ToolbarRenderStyleMode.Plain">
                     <DxToolbarItem Text="New" Click="New_Click" IconCssClass="grid-toolbar-new" Enabled="true" />
@@ -44,28 +47,19 @@
                 <DxGridDataColumn FieldName="ForeignKeyField" Caption="Foreign Key Field" MinWidth="120" />
                 <DxGridCommandColumn Width="40px" NewButtonVisible="false">
                     <CellDisplayTemplate>
-                        @*                         <div class="text-center">
-                            <DxButton IconCssClass="grid-icon grid-icon-delete"
-                              CssClass="grid-delete-btn"
-                              RenderStyle="ButtonRenderStyle.Link"
-                            aria-label="Delete"
-                            Click="@(() => DeleteDataItem(context.DataItem))" />
-                        </div> *@
-
                         <div class="text-center">
                             <button type="button" class="btn btn-link grid-disabled-button" aria-label="Delete" @onclick="@(() => DeleteDataItem(context.DataItem))">
                                 <i class="bi bi-trash-fill"></i>
                             </button>
                         </div>
-
                     </CellDisplayTemplate>
                     <CellEditTemplate>
                         <div class="text-center">
                             <DxButton Enabled="false"
-                            aria-label="Delete"
-                            CssClass="grid-disabled-button"
-                            IconCssClass="grid-icon grid-icon-delete"
-                            RenderStyle="ButtonRenderStyle.Link" />
+                                      aria-label="Delete"
+                                      CssClass="grid-disabled-button"
+                                      IconCssClass="grid-icon grid-icon-delete"
+                                      RenderStyle="ButtonRenderStyle.Link" />
                         </div>
                     </CellEditTemplate>
                 </DxGridCommandColumn>
@@ -73,9 +67,9 @@
             <!-- DetailRowTemplate shows audit history for a given row -->
             <DetailRowTemplate Context="detailContext">
                 <DxGrid Data="((ColumnRow)detailContext.DataItem).AuditHistory"
-                PageSize="5"
-                ColumnResizeMode="GridColumnResizeMode.NextColumn"
-                TextWrapEnabled="false">
+                        PageSize="5"
+                        ColumnResizeMode="GridColumnResizeMode.NextColumn"
+                        TextWrapEnabled="false">
                     <Columns>
                         <DxGridDataColumn FieldName="ChangedOn" Caption="Changed On" DisplayFormat="g" MinWidth="120" />
                         <DxGridDataColumn FieldName="ChangedBy" Caption="Changed By" MinWidth="100" />
@@ -121,7 +115,7 @@
                         <button type="button" class="btn-close" aria-label="Close" @onclick="CloseRevertModal"></button>
                     </div>
                     <div class="modal-body">
-                        <p>Are you sure you want to revert changes and reload data from file?</p>
+                        <p>Are you sure you want to revert changes and reload data from the database?</p>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" @onclick="CloseRevertModal">Cancel</button>
@@ -136,25 +130,25 @@
 @code {
     IGrid Grid { get; set; }
 
-    // Main data source of ColumnRow objects.
+    // Main data source of ColumnRow objects from the database.
     IList<ColumnRow> DataSource { get; set; } = new List<ColumnRow>();
 
-    // Sorted data source: by TableName then ColumnIndex.
+    // Sorted data source: sorted by TableName then ColumnIndex.
     IEnumerable<ColumnRow> DataSourceSorted => DataSource.OrderBy(x => x.TableName).ThenBy(x => x.ColumnIndex);
 
-    // Change tracking
+    // Change tracking dictionary.
     Dictionary<ColumnRow, DataChange> UnsavedChanges { get; } = new();
     bool BatchItemsEnabled => UnsavedChanges.Count > 0 || Grid.IsEditing();
 
     string currentUser => "TestUser";
 
-    // Boolean flags for modal display.
+    // Modal flags.
     bool ShowSaveModalFlag { get; set; }
     bool ShowRevertModalFlag { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadDataFromFileAsync();
+        await LoadDataFromDbAsync();
     }
 
     // ---------- Modal Handlers ----------
@@ -166,22 +160,22 @@
 
     async Task ConfirmSave()
     {
-        // In a real app, submit changes to the database.
+        // Save changes to the database.
+        await SaveDataToDbAsync();
         UnsavedChanges.Clear();
         CloseSaveModal();
-        await SaveDataToFileAsync();
     }
 
     async Task ConfirmRevert()
     {
         await Grid.CancelEditAsync();
         CloseRevertModal();
-        await LoadDataFromFileAsync();
+        await LoadDataFromDbAsync();
     }
 
     async Task Submit_Click()
     {
-        // Instead of immediate save, display confirmation modal.
+        // Instead of an immediate save, display the confirmation modal.
         OpenSaveModal();
         await Task.CompletedTask;
     }
@@ -218,8 +212,6 @@
         {
             var newRow = (ColumnRow)e.EditModel;
             newRow.ColumnIndex = DataSource.Any() ? DataSource.Max(x => x.ColumnIndex) + 1 : 1;
-            // For ordering purposes, we also assign ColumnIndex.
-            newRow.ColumnIndex = DataSource.Any() ? DataSource.Max(x => x.ColumnIndex) + 1 : 1;
             newRow.TableName = "NEW_TABLE_HERE";
             newRow.ColumnName = "NEW_COLUMN_HERE";
         }
@@ -233,7 +225,7 @@
         if (e.IsNew)
         {
             DataSource.Add(editedRow);
-            // Create one audit record for a new column.
+            // Create an audit entry for a new column.
             editedRow.AuditHistory.Add(new AuditEntry
                 {
                     ChangedOn = DateTime.Now,
@@ -247,20 +239,19 @@
         }
         else
         {
-            // List the property names to audit.
+            // Loop through properties to compare.
             var propertiesToAudit = new[]
             {
-            "TableName",
-            "ColumnName",
-            "IsNone",
-            "IsMasterKey",
-            "IsPrimaryKey",
-            "IsForeignKey",
-            "ForeignKeyTable",
-            "ForeignKeyField"
-        };
+                "TableName",
+                "ColumnName",
+                "IsNone",
+                "IsMasterKey",
+                "IsPrimaryKey",
+                "IsForeignKey",
+                "ForeignKeyTable",
+                "ForeignKeyField"
+            };
 
-            // Loop through each property and compare values.
             foreach (var propName in propertiesToAudit)
             {
                 var prop = typeof(ColumnRow).GetProperty(propName);
@@ -272,7 +263,7 @@
                     string editStr = editVal?.ToString() ?? string.Empty;
                     if (!string.Equals(origStr, editStr, StringComparison.OrdinalIgnoreCase))
                     {
-                        // Create a new audit entry for this change.
+                        // Create an audit entry for this property change.
                         originalRow.AuditHistory.Add(new AuditEntry
                             {
                                 ChangedOn = DateTime.Now,
@@ -282,13 +273,13 @@
                                 PreviousValue = origStr,
                                 NewValue = editStr
                             });
-                        // Update the original property.
+                        // Update the original value.
                         prop.SetValue(originalRow, editVal);
                     }
                 }
             }
 
-            // Optionally, update unsaved-changes tracking based on changed fields.
+            // Update unsaved changes tracking.
             var changedFields = ApplyModifiedFields(editedRow, originalRow);
             if (changedFields.Count > 0)
             {
@@ -357,36 +348,20 @@
     record DataChange(DataChangeType Type, HashSet<string> ChangedFields);
     enum DataChangeType { Modification, Addition, Delete }
 
-    // ---------- Data Save/Load from File ----------
-    private static readonly string schemaFilePath = "actiantableschema.json";
-    async Task LoadDataFromFileAsync()
+    // ---------- Database Save/Load Methods ----------
+    async Task LoadDataFromDbAsync()
     {
-        if (File.Exists(schemaFilePath))
-        {
-            try
-            {
-                string jsonOld = await File.ReadAllTextAsync(schemaFilePath);
-                var loaded = JsonSerializer.Deserialize<List<ColumnRow>>(jsonOld);
-                DataSource = loaded != null ? loaded.OrderBy(x => x.TableName).ThenBy(x => x.ColumnIndex).ToList() : new List<ColumnRow>();
-                Console.WriteLine("Loaded schema from file.");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Error reading schema: " + ex.Message);
-                DataSource = new List<ColumnRow>();
-            }
-        }
-        else
-        {
-            Console.WriteLine("No schema file found; loading mock data.");
-        }
+        DataSource = await DBContext.ColumnRows
+            .Include(cr => cr.AuditHistory)
+            .OrderBy(x => x.TableName)
+            .ThenBy(x => x.ColumnIndex)
+            .ToListAsync();
+        Console.WriteLine("Loaded schema from the database.");
     }
 
-    async Task SaveDataToFileAsync()
+    async Task SaveDataToDbAsync()
     {
-        var sorted = DataSource.OrderBy(x => x.TableName).ThenBy(x => x.ColumnIndex);
-        string newJson = JsonSerializer.Serialize(sorted, new JsonSerializerOptions { WriteIndented = true });
-        await File.WriteAllTextAsync(schemaFilePath, newJson);
-        Console.WriteLine($"Schema saved to {schemaFilePath}");
+        await DBContext.SaveChangesAsync();
+        Console.WriteLine("Schema saved to the database.");
     }
 }

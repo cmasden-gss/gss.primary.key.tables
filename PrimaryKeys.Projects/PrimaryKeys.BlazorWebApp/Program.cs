@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using PrimaryKeys.Application;
 using PrimaryKeys.BlazorWebApp.Components;
 using PrimaryKeys.BlazorWebApp.Components.Account;
 using PrimaryKeys.BlazorWebApp.Data;
@@ -16,6 +17,9 @@ builder.Services.AddDevExpressBlazor(options =>
     options.BootstrapVersion = DevExpress.Blazor.BootstrapVersion.v5;
     options.SizeMode = DevExpress.Blazor.SizeMode.Medium;
 });
+
+builder.Services.AddDbContext<PrimaryKeysContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("PrimaryKeyConnection")));
 
 builder.Services.AddMvc();
 
