@@ -36,10 +36,13 @@ Text="Fetching Data...">
     HighlightRowOnHover="true">
         <ToolbarTemplate>
             <DxToolbar ItemRenderStyleMode="ToolbarRenderStyleMode.Plain">
-                <DxToolbarItem Text="New" Click="New_Click" IconCssClass="grid-toolbar-new" Enabled="@isAdmin" />
-                <DxToolbarItem Text="Submit" Click="Submit_Click" IconCssClass="grid-toolbar-save" Enabled="BatchItemsEnabled" BeginGroup="true" />
-                <DxToolbarItem Text="Revert" Click="Revert_Click" IconCssClass="grid-toolbar-cancel" Enabled="BatchItemsEnabled" />
-                <DxToolbarItem Text="Removed" Click="ToggleIsRemoved" Checked="IsRemoved" BeginGroup="true" />
+                <Items>
+                    <DxToolbarItem Alignment="ToolbarItemAlignment.Left" Text="New" RenderStyle="ButtonRenderStyle.Secondary" IconCssClass="grid-toolbar-new" Click="New_Click"  Enabled="@isAdmin" /> 
+                    <DxToolbarItem Alignment="ToolbarItemAlignment.Left" Text="Submit" RenderStyle="ButtonRenderStyle.Secondary" IconCssClass="grid-toolbar-save" Click="Submit_Click"  Enabled="BatchItemsEnabled" BeginGroup="true"  />
+                    <DxToolbarItem Alignment="ToolbarItemAlignment.Left" Text="Revert" RenderStyle="ButtonRenderStyle.Secondary" IconCssClass="grid-toolbar-cancel" Click="Revert_Click"  Enabled="BatchItemsEnabled" />
+                    <DxToolbarItem Alignment="ToolbarItemAlignment.Right" Text="Removed" RenderStyle="ButtonRenderStyle.Secondary" Click="Removed_Click" Checked="IsRemoved"  BeginGroup="true"/>
+                    <DxToolbarItem Alignment="ToolbarItemAlignment.Right" Text="Column Chooser" RenderStyle="ButtonRenderStyle.Secondary" IconCssClass="grid-icon-column-chooser" Click="ColumnChooserButton_Click" BeginGroup="true"/>
+                </Items>
             </DxToolbar>
         </ToolbarTemplate>
         <Columns>
@@ -52,7 +55,7 @@ Text="Fetching Data...">
             <DxGridDataColumn FieldName="IsRemoved" Caption="Removed" MinWidth="40" ReadOnly="@(!isAdmin)" />
             <DxGridDataColumn FieldName="ForeignKeyTable" Caption="Foreign Key Table" MinWidth="120" />
             <DxGridDataColumn FieldName="ForeignKeyField" Caption="Foreign Key Field" MinWidth="120" />
-@*             <DxGridCommandColumn Width="60px" NewButtonVisible="false" EditButtonVisible="false" SaveButtonVisible="false">
+            @*             <DxGridCommandColumn Width="60px" NewButtonVisible="false" EditButtonVisible="false" SaveButtonVisible="false">
                                 <CellDisplayTemplate>
                     <div class="text-center">
                         <button type="button" class="btn btn-link grid-disabled-button" aria-label="Delete" @onclick="@(() => DeleteDataItem(context.DataItem))" readonly="@(!isAdmin)">
@@ -179,11 +182,14 @@ Text="Fetching Data...">
 
     // ColumnRow? RowToDelete { get; set; }
 
-    async Task ToggleIsRemoved()
+    async Task Removed_Click()
     {
         IsRemoved = !IsRemoved;
         await LoadDataFromDbAsync();
+    }
 
+    void ColumnChooserButton_Click() {
+        Grid.ShowColumnChooser();
     }
 
     protected override async Task OnInitializedAsync()
@@ -502,10 +508,20 @@ Text="Fetching Data...">
 
         query = query.Include(cr => cr.AuditHistory)
         .OrderBy(x => x.TableName)
-        .ThenBy(x => x.ColumnIndex)
-        .Take(50);
+        .ThenBy(x => x.ColumnIndex);
+        //.Take(50);
 
-        DataSource = await query.ToListAsync();
+        var items = await query.ToListAsync();
+
+        // order audit entites
+        foreach (var item in items)
+        {
+            item.AuditHistory = item.AuditHistory
+                .OrderBy(a => a.ChangedOn)
+                .ToList();
+        }
+
+        DataSource = items;
 
         Console.WriteLine("Loaded schema from the database.");
 
