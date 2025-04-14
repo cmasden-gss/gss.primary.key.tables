@@ -39,6 +39,7 @@ Text="Fetching Data...">
                 <DxToolbarItem Text="New" Click="New_Click" IconCssClass="grid-toolbar-new" Enabled="@isAdmin" />
                 <DxToolbarItem Text="Submit" Click="Submit_Click" IconCssClass="grid-toolbar-save" Enabled="BatchItemsEnabled" BeginGroup="true" />
                 <DxToolbarItem Text="Revert" Click="Revert_Click" IconCssClass="grid-toolbar-cancel" Enabled="BatchItemsEnabled" />
+                <DxToolbarItem Text="Removed" Click="ToggleIsRemoved" Checked="IsRemoved" BeginGroup="true" />
             </DxToolbar>
         </ToolbarTemplate>
         <Columns>
@@ -48,14 +49,15 @@ Text="Fetching Data...">
             <DxGridDataColumn FieldName="IsMasterKey" Caption="Master Key" MinWidth="40" />
             <DxGridDataColumn FieldName="IsPrimaryKey" Caption="Primary Key" MinWidth="40" />
             <DxGridDataColumn FieldName="IsForeignKey" Caption="Foreign Key" MinWidth="40" />
+            <DxGridDataColumn FieldName="IsRemoved" Caption="Removed" MinWidth="40" ReadOnly="@(!isAdmin)" />
             <DxGridDataColumn FieldName="ForeignKeyTable" Caption="Foreign Key Table" MinWidth="120" />
             <DxGridDataColumn FieldName="ForeignKeyField" Caption="Foreign Key Field" MinWidth="120" />
-            <DxGridCommandColumn Width="60px" NewButtonVisible="false" EditButtonVisible="false" SaveButtonVisible="false">
-                <CellDisplayTemplate>
+@*             <DxGridCommandColumn Width="60px" NewButtonVisible="false" EditButtonVisible="false" SaveButtonVisible="false">
+                                <CellDisplayTemplate>
                     <div class="text-center">
-@*                         <button type="button" class="btn btn-link grid-disabled-button" aria-label="Delete" @onclick="@(() => DeleteDataItem(context.DataItem))" readonly="@(!isAdmin)">
+                        <button type="button" class="btn btn-link grid-disabled-button" aria-label="Delete" @onclick="@(() => DeleteDataItem(context.DataItem))" readonly="@(!isAdmin)">
                             <i class="bi bi-trash-fill"></i>
-                        </button> *@
+                        </button>
 
                         <button type="button"
                                 class="btn grid-button"
@@ -66,7 +68,7 @@ Text="Fetching Data...">
                         </button>
                     </div>
                 </CellDisplayTemplate>
-            </DxGridCommandColumn>
+            </DxGridCommandColumn> *@
         </Columns>
         <!-- DetailRowTemplate shows audit history for a given row -->
         <DetailRowTemplate Context="detailContext">
@@ -130,7 +132,7 @@ Text="Fetching Data...">
     </div>
 }
 
-@if (ShowDeleteModalFlag)
+@* @if (ShowDeleteModalFlag)
 {
     <div class="modal fade show" style="display:block;" tabindex="-1">
         <div class="modal-dialog">
@@ -150,7 +152,7 @@ Text="Fetching Data...">
             </div>
         </div>
     </div>
-}
+} *@
 
 @code {
     IGrid Grid { get; set; }
@@ -167,12 +169,22 @@ Text="Fetching Data...">
     bool isLoading = false;
     bool isAdmin = false;
 
+    bool IsRemoved { get; set; } = false;
+
     // Modal flags.
     bool ShowSaveModalFlag { get; set; }
     bool ShowRevertModalFlag { get; set; }
-    bool ShowDeleteModalFlag { get; set; }
 
-    ColumnRow? RowToDelete { get; set; }
+    // bool ShowDeleteModalFlag { get; set; }
+
+    // ColumnRow? RowToDelete { get; set; }
+
+    async Task ToggleIsRemoved()
+    {
+        IsRemoved = !IsRemoved;
+        await LoadDataFromDbAsync();
+
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -216,7 +228,8 @@ Text="Fetching Data...">
                 nameof(ColumnRow.IsPrimaryKey),
                 nameof(ColumnRow.IsForeignKey),
                 nameof(ColumnRow.ForeignKeyTable),
-                nameof(ColumnRow.ForeignKeyField)
+                nameof(ColumnRow.ForeignKeyField),
+                nameof(ColumnRow.IsRemoved)
             };
             foreach (var propName in propertiesToAudit)
             {
@@ -340,40 +353,66 @@ Text="Fetching Data...">
     }
 
     // Instead of calling DeleteDataItem directly, open the delete modal.
-    void OpenDeleteModal(object dataItem)
-    {
-        RowToDelete = dataItem as ColumnRow;
-        ShowDeleteModalFlag = true;
-        StateHasChanged();
-    }
+    // void OpenDeleteModal(object dataItem)
+    // {
+    //     RowToDelete = dataItem as ColumnRow;
+    //     ShowDeleteModalFlag = true;
+    //     StateHasChanged();
+    // }
 
-    void CloseDeleteModal()
-    {
-        ShowDeleteModalFlag = false;
-        RowToDelete = null;
-        StateHasChanged();
-    }
+    // void CloseDeleteModal()
+    // {
+    //     ShowDeleteModalFlag = false;
+    //     RowToDelete = null;
+    //     StateHasChanged();
+    // }
 
-    // Called from the modal confirmation button.
-    async Task ConfirmDelete()
-    {
-        if (RowToDelete is not null)
-        {
-            // Call your existing delete logic.
-            DeleteDataItem(RowToDelete);
-        }
-        CloseDeleteModal();
-        await Task.CompletedTask;
-    }
+    // // Called from the modal confirmation button.
+    // async Task ConfirmDelete()
+    // {
+    //     if (RowToDelete is not null)
+    //     {
+    //         // Call your existing delete logic.
+    //         DeleteDataItem(RowToDelete);
+    //     }
+    //     CloseDeleteModal();
+    //     await Task.CompletedTask;
+    // }
 
 
-    void DeleteDataItem(object dataItem)
-    {
-        var row = (ColumnRow)dataItem;
-        UnsavedChanges[row] = new DataChange(DataChangeType.Delete, new HashSet<string>());
-        DataSource.Remove(row);
-        Grid.Reload();
-    }
+    // void DeleteDataItem(object dataItem)
+    // {
+    //     // var row = (ColumnRow)dataItem;
+    //     // // UnsavedChanges[row] = new DataChange(DataChangeType.Delete, new HashSet<string>());
+    //     // // DataSource.Remove(row);
+
+    //     // DataSource.Remove(row);
+    //     // Grid.Reload();
+
+    //     var row = (ColumnRow)dataItem;
+    //     row.IsRemoved = true;
+
+    //     // Track the modification change if not already tracked.
+    //     if (!UnsavedChanges.ContainsKey(row))
+    //     {
+    //         UnsavedChanges[row] = new DataChange(DataChangeType.Modification, new HashSet<string>());
+    //     }
+    //     UnsavedChanges[row].ChangedFields.Add(nameof(ColumnRow.IsRemoved));
+
+    //     row.AuditHistory.Add(new AuditEntry
+    //         {
+    //             ChangedOn = DateTime.Now,
+    //             ChangedBy = currentUser,
+    //             Description = "Record marked as removed",
+    //             ColumnName = row.ColumnName,
+    //             PreviousValue = "",
+    //             NewValue = ""
+    //         });
+
+    //     // // Optionally, remove the row from the grid display.
+    //     // DataSource.Remove(row);
+    //     // Grid.Reload();
+    // }
 
     // Compare properties and update the original record (used during inline edit).
     HashSet<string> ApplyModifiedFields(ColumnRow edited, ColumnRow original)
@@ -403,6 +442,11 @@ Text="Fetching Data...">
         {
             original.IsPrimaryKey = edited.IsPrimaryKey;
             changedFields.Add(nameof(ColumnRow.IsPrimaryKey));
+        }
+        if (edited.IsRemoved != original.IsRemoved)
+        {
+            original.IsRemoved = edited.IsRemoved;
+            changedFields.Add(nameof(ColumnRow.IsRemoved));
         }
         if (edited.IsForeignKey != original.IsForeignKey)
         {
@@ -439,17 +483,30 @@ Text="Fetching Data...">
         isLoading = true;
         StateHasChanged();
 
-        // DBContext.ChangeTracker.Clear();
         DataSource.Clear();
         StateHasChanged();
 
         using var context = DbContextFactory.CreateDbContext();
-        DataSource = await context.ColumnRows
-            .Include(cr => cr.AuditHistory)
-            .OrderBy(x => x.TableName)
-            .ThenBy(x => x.ColumnIndex)
-            // .Take(50)
-            .ToListAsync();
+
+        IQueryable<ColumnRow> query = context.ColumnRows;
+
+
+        if (IsRemoved)
+        {
+            query = query.Where(x => x.IsRemoved);
+        }
+        else
+        {
+            query = query.Where(x => !x.IsRemoved);
+        }
+
+        query = query.Include(cr => cr.AuditHistory)
+        .OrderBy(x => x.TableName)
+        .ThenBy(x => x.ColumnIndex)
+        .Take(50);
+
+        DataSource = await query.ToListAsync();
+
         Console.WriteLine("Loaded schema from the database.");
 
         isLoading = false;
