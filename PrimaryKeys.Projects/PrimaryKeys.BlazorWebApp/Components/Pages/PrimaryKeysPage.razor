@@ -36,7 +36,7 @@ Text="Fetching Data...">
     HighlightRowOnHover="true">
         <ToolbarTemplate>
             <DxToolbar ItemRenderStyleMode="ToolbarRenderStyleMode.Plain">
-                <DxToolbarItem Text="New" Click="New_Click" IconCssClass="grid-toolbar-new" Enabled="true" />
+                <DxToolbarItem Text="New" Click="New_Click" IconCssClass="grid-toolbar-new" Enabled="@isAdmin" />
                 <DxToolbarItem Text="Submit" Click="Submit_Click" IconCssClass="grid-toolbar-save" Enabled="BatchItemsEnabled" BeginGroup="true" />
                 <DxToolbarItem Text="Revert" Click="Revert_Click" IconCssClass="grid-toolbar-cancel" Enabled="BatchItemsEnabled" />
             </DxToolbar>
@@ -53,26 +53,25 @@ Text="Fetching Data...">
             <DxGridCommandColumn Width="60px" NewButtonVisible="false" EditButtonVisible="false" SaveButtonVisible="false">
                 <CellDisplayTemplate>
                     <div class="text-center">
-                        <button type="button" class="btn btn-link grid-disabled-button" aria-label="Delete" @onclick="@(() => DeleteDataItem(context.DataItem))" readonly="@(!isAdmin)">
+@*                         <button type="button" class="btn btn-link grid-disabled-button" aria-label="Delete" @onclick="@(() => DeleteDataItem(context.DataItem))" readonly="@(!isAdmin)">
+                            <i class="bi bi-trash-fill"></i>
+                        </button> *@
+
+                        <button type="button"
+                                class="btn grid-button"
+                                aria-label="Delete"
+                                @onclick="@(() => OpenDeleteModal(context.DataItem))"
+                                disabled="@(!isAdmin)">
                             <i class="bi bi-trash-fill"></i>
                         </button>
                     </div>
                 </CellDisplayTemplate>
-                @*                     <CellEditTemplate>
-                        <div class="text-center">
-                            <DxButton Enabled="false"
-                            aria-label="Delete"
-                            CssClass="grid-disabled-button"
-                            IconCssClass="grid-icon grid-icon-delete"
-                            RenderStyle="ButtonRenderStyle.Link" />
-                        </div>
-                    </CellEditTemplate> *@
             </DxGridCommandColumn>
         </Columns>
         <!-- DetailRowTemplate shows audit history for a given row -->
         <DetailRowTemplate Context="detailContext">
             <DxGrid Data="((ColumnRow)detailContext.DataItem).AuditHistory"
-            PageSize="5"
+            PageSize="25"
             ColumnResizeMode="GridColumnResizeMode.NextColumn"
             TextWrapEnabled="false">
                 <Columns>
@@ -131,6 +130,28 @@ Text="Fetching Data...">
     </div>
 }
 
+@if (ShowDeleteModalFlag)
+{
+    <div class="modal fade show" style="display:block;" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Delete</h5>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="CloseDeleteModal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete the following row?</p>
+                    <p><strong>@RowToDelete.TableName - @RowToDelete.ColumnName</strong></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseDeleteModal">Cancel</button>
+                    <button type="button" class="btn btn-danger" @onclick="ConfirmDelete">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     IGrid Grid { get; set; }
 
@@ -149,6 +170,9 @@ Text="Fetching Data...">
     // Modal flags.
     bool ShowSaveModalFlag { get; set; }
     bool ShowRevertModalFlag { get; set; }
+    bool ShowDeleteModalFlag { get; set; }
+
+    ColumnRow? RowToDelete { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -314,6 +338,34 @@ Text="Fetching Data...">
             }
         }
     }
+
+    // Instead of calling DeleteDataItem directly, open the delete modal.
+    void OpenDeleteModal(object dataItem)
+    {
+        RowToDelete = dataItem as ColumnRow;
+        ShowDeleteModalFlag = true;
+        StateHasChanged();
+    }
+
+    void CloseDeleteModal()
+    {
+        ShowDeleteModalFlag = false;
+        RowToDelete = null;
+        StateHasChanged();
+    }
+
+    // Called from the modal confirmation button.
+    async Task ConfirmDelete()
+    {
+        if (RowToDelete is not null)
+        {
+            // Call your existing delete logic.
+            DeleteDataItem(RowToDelete);
+        }
+        CloseDeleteModal();
+        await Task.CompletedTask;
+    }
+
 
     void DeleteDataItem(object dataItem)
     {

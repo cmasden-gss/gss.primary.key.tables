@@ -14,6 +14,7 @@ CREATE TABLE [gssTables].[ColumnRow] (
     [IsMasterKey] BIT NOT NULL,
     [IsPrimaryKey] BIT NOT NULL,
     [IsForeignKey] BIT NOT NULL,
+    [IsRemoved] BIT NOT NULL,
     [ForeignKeyTable] NVARCHAR(200) NULL,
     [ForeignKeyField] NVARCHAR(200) NULL
 );
