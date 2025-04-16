@@ -8,6 +8,7 @@
 @inject IDbContextFactory<PrimaryKeysContext> DbContextFactory
 @inject IHttpContextAccessor HttpContextAccessor
 @inject IConfiguration Configuration
+@inject IJSRuntime JSRuntime 
 
 <style>
     .highlighted-item > td {
@@ -62,6 +63,8 @@ Text="Fetching Data...">
                     <DxToolbarItem Alignment="ToolbarItemAlignment.Right" Text="Removed" RenderStyle="ButtonRenderStyle.Secondary" Click="Removed_Click" Checked="IsRemoved"  BeginGroup="true"/>
                     <DxToolbarItem Alignment="ToolbarItemAlignment.Right" Text="Export" Click="ExportXlsx_Click" BeginGroup="true" />
                     <DxToolbarItem Alignment="ToolbarItemAlignment.Right" Text="Column Chooser" RenderStyle="ButtonRenderStyle.Secondary" IconCssClass="grid-icon-column-chooser" Click="ColumnChooserButton_Click" BeginGroup="true"/>
+@*                     <DxToolbarItem Alignment="ToolbarItemAlignment.Right" Text="Help" RenderStyle="ButtonRenderStyle.Secondary" IconCssClass="oi oi-info" NavigateUrl="https://docs.gss-service.com/en_US/in-house-sdk/schema-manager" BeginGroup="true"/> *@
+                    <DxToolbarItem Alignment="ToolbarItemAlignment.Right" Text="Help" RenderStyle="ButtonRenderStyle.Secondary" IconCssClass="oi oi-info" Click="@(e => JSRuntime.InvokeVoidAsync("open", "https://docs.gss-service.com/en_US/in-house-sdk/schema-manager", "_blank"))" BeginGroup="true" />
                 </Items>
             </DxToolbar>
         </ToolbarTemplate>
