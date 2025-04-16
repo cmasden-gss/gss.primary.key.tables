@@ -1,4 +1,4 @@
-﻿@page "/"
+﻿@page "/2"
 @using System.Text.Json
 @using System.Text.Json.Serialization
 @using PrimaryKeys.Application
@@ -11,15 +11,16 @@
 @inject IJSRuntime JSRuntime 
 
 <style>
-    /* DevExpress and Bootstrap Themes */
-    .alt-item > td:not(.dxbl-grid-empty-cell),
-    .alt-item > td:not(.dxbl-grid-indent-cell) {
-        background-color: color-mix(in srgb, var(--bs-gray-300), transparent 50%);
-    }
-    /* Fluent Themes */
-     .alt-item {
-        --dxbl-grid-row-bg: var(--DS-color-surface-neutral-subdued-rest);
-    }
+
+/* DevExpress and Bootstrap Themes */
+.alt-item > td:not(.dxbl-grid-empty-cell),
+.alt-item > td:not(.dxbl-grid-indent-cell) {
+    background-color: color-mix(in srgb, var(--bs-gray-300), transparent 50%);
+}
+/* Fluent Themes */
+ .alt-item {
+    --dxbl-grid-row-bg: var(--DS-color-surface-neutral-subdued-rest);
+}
 
     .highlighted-item > td {
     background-color: var(--bs-danger-border-subtle);
@@ -346,9 +347,10 @@ Text="Fetching Data...">
 
     void Grid_CustomizeElement(GridCustomizeElementEventArgs e)
     {
-                if(e.ElementType == GridElementType.DataRow && e.VisibleIndex % 2 == 1) {
+        if(e.ElementType == GridElementType.DataRow && e.VisibleIndex % 2 == 1) {
             e.CssClass = "alt-item";
         }
+
         if(e.ElementType == GridElementType.HeaderCell) {
             e.Style = "background-color: var(--DS-color-surface-neutral-default-selected)";
             e.CssClass = "header-bold";
