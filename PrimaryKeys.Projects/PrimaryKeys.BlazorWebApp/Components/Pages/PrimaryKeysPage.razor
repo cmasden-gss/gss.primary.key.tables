@@ -226,62 +226,6 @@ Text="Fetching Data...">
         await LoadDataFromDbAsync();
     }
 
-    async Task ConfirmSave()
-    {
-        // For each modified record, compare the stored original state with the current record
-        // and create audit entries for all changes.
-        foreach (var kvp in UnsavedChanges.Where(k => k.Value.Type == DataChangeType.Modification))
-        {
-            var modifiedRecord = kvp.Key;
-            var originalState = kvp.Value.OriginalState;  // Deep copy captured earlier.
-            // List of properties to audit.
-            var propertiesToAudit = new[]
-                  {
-                nameof(ColumnRow.TableName),
-                nameof(ColumnRow.ColumnName),
-                nameof(ColumnRow.IsNone),
-                nameof(ColumnRow.IsMasterKey),
-                nameof(ColumnRow.IsPrimaryKey),
-                nameof(ColumnRow.IsForeignKey),
-                nameof(ColumnRow.ForeignKeyTable),
-                nameof(ColumnRow.ForeignKeyField),
-                nameof(ColumnRow.IsRemoved),
-                nameof(ColumnRow.IsConfirmed)
-            };
-            foreach (var propName in propertiesToAudit)
-            {
-                var prop = typeof(ColumnRow).GetProperty(propName);
-                if (prop != null)
-                {
-                    string oldVal = prop.GetValue(originalState)?.ToString() ?? string.Empty;
-                    string newVal = prop.GetValue(modifiedRecord)?.ToString() ?? string.Empty;
-                    if (!string.Equals(oldVal, newVal, StringComparison.OrdinalIgnoreCase))
-                    {
-                        // Create a separate audit entry for this property change.
-                        modifiedRecord.AuditHistory.Add(new AuditEntry
-                            {
-                                ChangedOn = DateTime.Now,
-                                ChangedBy = CurrentUser,
-                                Description = $"{propName}",
-                                ColumnName = modifiedRecord.ColumnName,
-                                PreviousValue = oldVal,
-                                NewValue = newVal
-                            });
-                    }
-                }
-            }
-
-            modifiedRecord.AuditHistory = modifiedRecord.AuditHistory
-                .OrderByDescending(a => a.ChangedOn)
-                .ToList();
-        }
-
-        // Save the changes to the database.
-        await SaveDataToDbAsync();
-        UnsavedChanges.Clear();
-        CloseSaveModal();
-    }
-
     async Task ConfirmRevert()
     {
         await Grid.CancelEditAsync();
@@ -400,62 +344,82 @@ Text="Fetching Data...">
         }
     }
 
-    HashSet<string> ApplyModifiedFields(ColumnRow edited, ColumnRow original)
+    // Shared list of properties to audit/compare
+    private static readonly string[] _auditedProperties = new[]
     {
-        var changedFields = new HashSet<string>();
-        if (edited.TableName != original.TableName)
+        nameof(ColumnRow.TableName),
+        nameof(ColumnRow.ColumnName),
+        nameof(ColumnRow.IsNone),
+        nameof(ColumnRow.IsMasterKey),
+        nameof(ColumnRow.IsPrimaryKey),
+        nameof(ColumnRow.IsForeignKey),
+        nameof(ColumnRow.ForeignKeyTable),
+        nameof(ColumnRow.ForeignKeyField),
+        nameof(ColumnRow.IsRemoved),
+        nameof(ColumnRow.IsConfirmed)
+    };
+
+    /// <summary>
+    /// Creates audit entries for any modified fields, then commits changes.
+    /// </summary>
+    async Task ConfirmSave()
+    {
+        foreach (var kvp in UnsavedChanges.Where(k => k.Value.Type == DataChangeType.Modification))
         {
-            original.TableName = edited.TableName;
-            changedFields.Add(nameof(ColumnRow.TableName));
+            var modified = kvp.Key;
+            var original = kvp.Value.OriginalState;
+
+            foreach (var propName in _auditedProperties)
+            {
+                var prop = typeof(ColumnRow).GetProperty(propName);
+                if (prop is null) continue;
+                var oldVal = prop.GetValue(original)?.ToString() ?? "";
+                var newVal = prop.GetValue(modified)?.ToString() ?? "";
+                if (!oldVal.Equals(newVal, StringComparison.OrdinalIgnoreCase))
+                {
+                    modified.AuditHistory.Add(new AuditEntry
+                        {
+                            ChangedOn = DateTime.Now,
+                            ChangedBy = CurrentUser,
+                            Description = propName,
+                            ColumnName = modified.ColumnName,
+                            PreviousValue = oldVal,
+                            NewValue = newVal
+                        });
+                }
+            }
+
+            modified.AuditHistory = modified.AuditHistory
+                                         .OrderByDescending(a => a.ChangedOn)
+                                         .ToList();
         }
-        if (edited.ColumnName != original.ColumnName)
-        {
-            original.ColumnName = edited.ColumnName;
-            changedFields.Add(nameof(ColumnRow.ColumnName));
-        }
-        if (edited.IsNone != original.IsNone)
-        {
-            original.IsNone = edited.IsNone;
-            changedFields.Add(nameof(ColumnRow.IsNone));
-        }
-        if (edited.IsMasterKey != original.IsMasterKey)
-        {
-            original.IsMasterKey = edited.IsMasterKey;
-            changedFields.Add(nameof(ColumnRow.IsMasterKey));
-        }
-        if (edited.IsPrimaryKey != original.IsPrimaryKey)
-        {
-            original.IsPrimaryKey = edited.IsPrimaryKey;
-            changedFields.Add(nameof(ColumnRow.IsPrimaryKey));
-        }
-        if (edited.IsRemoved != original.IsRemoved)
-        {
-            original.IsRemoved = edited.IsRemoved;
-            changedFields.Add(nameof(ColumnRow.IsRemoved));
-        }
-        if (edited.IsConfirmed != original.IsConfirmed)
-        {
-            original.IsConfirmed = edited.IsConfirmed;
-            changedFields.Add(nameof(ColumnRow.IsConfirmed));
-        }
-        if (edited.IsForeignKey != original.IsForeignKey)
-        {
-            original.IsForeignKey = edited.IsForeignKey;
-            changedFields.Add(nameof(ColumnRow.IsForeignKey));
-        }
-        if (edited.ForeignKeyTable != original.ForeignKeyTable)
-        {
-            original.ForeignKeyTable = edited.ForeignKeyTable;
-            changedFields.Add(nameof(ColumnRow.ForeignKeyTable));
-        }
-        if (edited.ForeignKeyField != original.ForeignKeyField)
-        {
-            original.ForeignKeyField = edited.ForeignKeyField;
-            changedFields.Add(nameof(ColumnRow.ForeignKeyField));
-        }
-        return changedFields;
+
+        await SaveDataToDbAsync();
+        UnsavedChanges.Clear();
+        CloseSaveModal();
     }
 
+    /// <summary>
+    /// Compares and applies modified fields from <paramref name="edited"/> to <paramref name="original"/>,
+    /// returning the set of names of properties that actually changed.
+    /// </summary>
+    HashSet<string> ApplyModifiedFields(ColumnRow edited, ColumnRow original)
+    {
+        var changed = new HashSet<string>();
+        foreach (var propName in _auditedProperties)
+        {
+            var prop = typeof(ColumnRow).GetProperty(propName);
+            if (prop is null) continue;
+            var oldVal = prop.GetValue(original)?.ToString() ?? "";
+            var newVal = prop.GetValue(edited)?.ToString() ?? "";
+            if (!oldVal.Equals(newVal, StringComparison.OrdinalIgnoreCase))
+            {
+                prop.SetValue(original, prop.GetValue(edited));
+                changed.Add(propName);
+            }
+        }
+        return changed;
+    }
 
 
     async Task LoadDataFromDbAsync()
