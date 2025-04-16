@@ -9,6 +9,24 @@
 @inject IHttpContextAccessor HttpContextAccessor
 @inject IConfiguration Configuration
 
+<style>
+    .highlighted-item > td {
+        background-color: var(--bs-danger-border-subtle);
+    }
+    .highlighted-item > td:first-child {
+        background-color: transparent;
+    }
+    /* Example additional style for confirmed rows */
+    .grid-confirmed-row {
+        background-color: rgba(0, 128, 0, 0.15) !important;
+    }
+    /* Style to indicate modified cells */
+    .grid-modified-cell {
+        border: 2px solid var(--bs-warning) !important;
+    }
+</style>
+
+
 <h5 class="mb-4">Schema Manager - @currentUser</h5>
 
 <DxLoadingPanel @bind-Visible="isLoading"
@@ -24,6 +42,7 @@ Text="Fetching Data...">
     Data="DataSource"
     KeyFieldName="Id"
     ValidationEnabled="false"
+    FilterMenuButtonDisplayMode="GridFilterMenuButtonDisplayMode.Always"
     ShowFilterRow="true"
     ShowSearchBox="true"
 
@@ -41,6 +60,7 @@ Text="Fetching Data...">
                     <DxToolbarItem Alignment="ToolbarItemAlignment.Left" Text="Submit" RenderStyle="ButtonRenderStyle.Secondary" IconCssClass="grid-toolbar-save" Click="Submit_Click"  Enabled="BatchItemsEnabled" BeginGroup="true"  />
                     <DxToolbarItem Alignment="ToolbarItemAlignment.Left" Text="Revert" RenderStyle="ButtonRenderStyle.Secondary" IconCssClass="grid-toolbar-cancel" Click="Revert_Click"  Enabled="BatchItemsEnabled" />
                     <DxToolbarItem Alignment="ToolbarItemAlignment.Right" Text="Removed" RenderStyle="ButtonRenderStyle.Secondary" Click="Removed_Click" Checked="IsRemoved"  BeginGroup="true"/>
+                    <DxToolbarItem Alignment="ToolbarItemAlignment.Right" Text="Export" Click="ExportXlsx_Click" BeginGroup="true" />
                     <DxToolbarItem Alignment="ToolbarItemAlignment.Right" Text="Column Chooser" RenderStyle="ButtonRenderStyle.Secondary" IconCssClass="grid-icon-column-chooser" Click="ColumnChooserButton_Click" BeginGroup="true"/>
                 </Items>
             </DxToolbar>
@@ -48,13 +68,14 @@ Text="Fetching Data...">
         <Columns>
             <DxGridDataColumn FieldName="TableName" Caption="Table Name" MinWidth="100" ReadOnly="@(!isAdmin)" />
             <DxGridDataColumn FieldName="ColumnName" Caption="Column Name" MinWidth="100" ReadOnly="@(!isAdmin)" />
-            <DxGridDataColumn FieldName="IsNone" Caption="None" MinWidth="40" />
-            <DxGridDataColumn FieldName="IsMasterKey" Caption="Master Key" MinWidth="40" />
-            <DxGridDataColumn FieldName="IsPrimaryKey" Caption="Primary Key" MinWidth="40" />
-            <DxGridDataColumn FieldName="IsForeignKey" Caption="Foreign Key" MinWidth="40" />
-            <DxGridDataColumn FieldName="IsRemoved" Caption="Removed" MinWidth="40" ReadOnly="@(!isAdmin)" />
-            <DxGridDataColumn FieldName="ForeignKeyTable" Caption="Foreign Key Table" MinWidth="120" />
-            <DxGridDataColumn FieldName="ForeignKeyField" Caption="Foreign Key Field" MinWidth="120" />
+            <DxGridDataColumn FieldName="IsNone" Caption="None" Width="60" />
+            <DxGridDataColumn FieldName="IsMasterKey" Caption="Master Key" Width="80" />
+            <DxGridDataColumn FieldName="IsPrimaryKey" Caption="Primary Key" Width="80" />
+            <DxGridDataColumn FieldName="IsForeignKey" Caption="Foreign Key" Width="80" />
+            <DxGridDataColumn FieldName="IsRemoved" Caption="Removed" Width="80" ReadOnly="@(!isAdmin)" />
+            <DxGridDataColumn FieldName="ForeignKeyTable" Caption="Foreign Key Table" Width="160" />
+            <DxGridDataColumn FieldName="ForeignKeyField" Caption="Foreign Key Field" Width="160" />
+            <DxGridDataColumn FieldName="IsConfirmed" Caption="Confirmed" Width="80" ReadOnly="@(!isAdmin)" />
             @*             <DxGridCommandColumn Width="60px" NewButtonVisible="false" EditButtonVisible="false" SaveButtonVisible="false">
                                 <CellDisplayTemplate>
                     <div class="text-center">
@@ -192,6 +213,14 @@ Text="Fetching Data...">
         Grid.ShowColumnChooser();
     }
 
+    async Task ExportXlsx_Click()
+    {
+        await Grid.ExportToXlsxAsync("SchemaManager_Export", new GridXlExportOptions()
+            {
+                ExportSelectedRowsOnly = false,
+            });
+    }
+
     protected override async Task OnInitializedAsync()
     {
         // Retrieve current user info.
@@ -293,7 +322,6 @@ Text="Fetching Data...">
         await Grid.StartEditNewRowAsync();
     }
 
-    // ---------- Grid Event Handlers ----------
     void Grid_CustomizeElement(GridCustomizeElementEventArgs ea)
     {
         if (ea.ElementType == GridElementType.DataCell)
@@ -304,6 +332,13 @@ Text="Fetching Data...">
                 var col = (IGridDataColumn)ea.Column;
                 if (changes.Type == DataChangeType.Addition || changes.ChangedFields.Contains(col.FieldName))
                     ea.CssClass = "grid-modified-cell";
+            }
+
+            // Apply conditional formatting:
+            // If the record is confirmed then highlight the row (and make it read-only).
+            if (rowData != null && rowData.IsConfirmed)
+            {
+                ea.CssClass += " grid-confirmed-row";
             }
         }
     }
@@ -454,6 +489,11 @@ Text="Fetching Data...">
             original.IsRemoved = edited.IsRemoved;
             changedFields.Add(nameof(ColumnRow.IsRemoved));
         }
+        if (edited.IsConfirmed != original.IsConfirmed)
+        {
+            original.IsConfirmed = edited.IsConfirmed;
+            changedFields.Add(nameof(ColumnRow.IsConfirmed));
+        }
         if (edited.IsForeignKey != original.IsForeignKey)
         {
             original.IsForeignKey = edited.IsForeignKey;
@@ -506,10 +546,16 @@ Text="Fetching Data...">
             query = query.Where(x => !x.IsRemoved);
         }
 
+        #if DEBUG
         query = query.Include(cr => cr.AuditHistory)
         .OrderBy(x => x.TableName)
+        .ThenBy(x => x.ColumnIndex)
+       .Take(50);
+       #else
+               query = query.Include(cr => cr.AuditHistory)
+        .OrderBy(x => x.TableName)
         .ThenBy(x => x.ColumnIndex);
-        //.Take(50);
+       #endif
 
         var items = await query.ToListAsync();
 

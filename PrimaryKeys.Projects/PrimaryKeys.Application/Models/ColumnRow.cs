@@ -29,6 +29,8 @@ namespace PrimaryKeys.Application.Models
 
         public bool IsRemoved { get; set; }
 
+        public bool IsConfirmed { get; set; }
+
         // Navigation property: a ColumnRow can have many AuditEntries.
         public virtual List<AuditEntry> AuditHistory { get; set; } = new List<AuditEntry>();
 
@@ -49,6 +51,7 @@ namespace PrimaryKeys.Application.Models
                 ForeignKeyTable = this.ForeignKeyTable,
                 ForeignKeyField = this.ForeignKeyField,
                 IsRemoved = this.IsRemoved,
+                IsConfirmed = this.IsConfirmed
                 // Note: AuditHistory is not cloned because we want a clean slate for comparison.
             };
         }

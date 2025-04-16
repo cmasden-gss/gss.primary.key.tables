@@ -1,17 +1,11 @@
-﻿// Program.cs
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.Common;
-using System.Data.SqlTypes;
 using System.IO;
 using System.Linq;
-using System.Reflection.Metadata.Ecma335;
 using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Pervasive.Data.SqlClient;
 using PrimaryKeys.Application;
 using PrimaryKeys.Application.Models;
@@ -373,7 +367,7 @@ namespace PrimaryKeys.SchemaDumpConsoleApp
                     ColumnIndex = col.Ordinal,
                     IsPrimaryKey = col.IsPrimaryKey,
                     IsForeignKey = col.ForeignKeyTableAndColumnNames.Any(),
-                    IsMasterKey = false // (Adjust this logic as needed.)
+                    IsMasterKey = false
                 };
                 row.IsNone = !(row.IsPrimaryKey || row.IsForeignKey || row.IsMasterKey);
                 if (row.IsForeignKey)
