@@ -38,7 +38,7 @@
 
     /* Style to indicate modified cells */
     .grid-modified-cell {
-    border: 2px solid var(--bs-warning) !important;
+    border: 1px dotted var(--bs-warning) !important;
     }
 </style>
 
@@ -62,7 +62,7 @@ Text="Fetching Data...">
     ShowFilterRow="true"
     ShowSearchBox="true"
 
-    EditMode="GridEditMode.PopupEditForm"
+    EditMode="GridEditMode.EditCell"
     EditModelSaving="Grid_EditModelSaving"
     CustomizeElement="Grid_CustomizeElement"
     CustomizeEditModel="Grid_CustomizeEditModel"
@@ -84,126 +84,34 @@ Text="Fetching Data...">
             </DxToolbar>
         </ToolbarTemplate>
         <Columns>
-        <!-- Table Name -->
-        <DxGridDataColumn FieldName="TableName" Caption="Table Name" MinWidth="100">
-            <CellDisplayTemplate Context="context">
-                @{
-                    var row = (ColumnRow)context.DataItem;
-                }
-                <DxTextBox
-                    @bind-text="row.TableName"
-                    ReadOnly="@(row.IsConfirmed || !IsAdmin)" />
-            </CellDisplayTemplate>
-        </DxGridDataColumn>
+            <DxGridDataColumn FieldName="TableName" Caption="Table Name" MinWidth="100" ReadOnly="@(!IsAdmin)" />
+            <DxGridDataColumn FieldName="ColumnName" Caption="Column Name" MinWidth="100" ReadOnly="@(!IsAdmin)" />
+            <DxGridDataColumn FieldName="IsNone" Caption="None" Width="60" />
+            <DxGridDataColumn FieldName="IsMasterKey" Caption="Master Key" Width="80" />
+            <DxGridDataColumn FieldName="IsPrimaryKey" Caption="Primary Key" Width="80" />
+            <DxGridDataColumn FieldName="IsForeignKey" Caption="Foreign Key" Width="80" />
+            <DxGridDataColumn FieldName="ForeignKeyTable" Caption="Foreign Key Table" Width="160" />
+            <DxGridDataColumn FieldName="ForeignKeyField" Caption="Foreign Key Field" Width="160" />
+            <DxGridDataColumn FieldName="IsConfirmed" Caption="Confirmed" Width="80" ReadOnly="@(!IsAdmin)" />
+            <DxGridDataColumn FieldName="IsRemoved" Caption="Removed" Width="80" ReadOnly="@(!IsAdmin)" />
+            @*             <DxGridCommandColumn Width="60px" NewButtonVisible="false" EditButtonVisible="false" SaveButtonVisible="false">
+                                <CellDisplayTemplate>
+                    <div class="text-center">
+                        <button type="button" class="btn btn-link grid-disabled-button" aria-label="Delete" @onclick="@(() => DeleteDataItem(context.DataItem))" readonly="@(!isAdmin)">
+                            <i class="bi bi-trash-fill"></i>
+                        </button>
 
-        <!-- Column Name -->
-        <DxGridDataColumn FieldName="ColumnName" Caption="Column Name" MinWidth="100">
-            <CellDisplayTemplate Context="context">
-                @{
-                    var row = (ColumnRow)context.DataItem;
-                }
-                <DxTextBox
-                    @bind-text="row.ColumnName"
-                    ReadOnly="@(row.IsConfirmed || !IsAdmin)" />
-            </CellDisplayTemplate>
-        </DxGridDataColumn>
-
-        <!-- None -->
-        <DxGridDataColumn FieldName="IsNone" Caption="None" Width="60">
-            <CellDisplayTemplate Context="context">
-                @{
-                    var row = (ColumnRow)context.DataItem;
-                }
-                <DxCheckBox
-                    @bind-Checked="row.IsNone"
-                    ReadOnly="@(row.IsConfirmed)" />
-            </CellDisplayTemplate>
-        </DxGridDataColumn>
-
-        <!-- Master Key -->
-        <DxGridDataColumn FieldName="IsMasterKey" Caption="Master Key" Width="80">
-            <CellDisplayTemplate Context="context">
-                @{
-                    var row = (ColumnRow)context.DataItem;
-                }
-                <DxCheckBox
-                    @bind-Checked="row.IsMasterKey"
-                    ReadOnly="@(row.IsConfirmed)" />
-            </CellDisplayTemplate>
-        </DxGridDataColumn>
-
-        <!-- Primary Key -->
-        <DxGridDataColumn FieldName="IsPrimaryKey" Caption="Primary Key" Width="80">
-            <CellDisplayTemplate Context="context">
-                @{
-                    var row = (ColumnRow)context.DataItem;
-                }
-                <DxCheckBox
-                    @bind-Checked="row.IsPrimaryKey"
-                    ReadOnly="@(row.IsConfirmed)" />
-            </CellDisplayTemplate>
-        </DxGridDataColumn>
-
-        <!-- Foreign Key -->
-        <DxGridDataColumn FieldName="IsForeignKey" Caption="Foreign Key" Width="80">
-            <CellDisplayTemplate Context="context">
-                @{
-                    var row = (ColumnRow)context.DataItem;
-                }
-                <DxCheckBox
-                    @bind-Checked="row.IsForeignKey"
-                    ReadOnly="@(row.IsConfirmed)" />
-            </CellDisplayTemplate>
-        </DxGridDataColumn>
-
-        <!-- Foreign Key Table -->
-        <DxGridDataColumn FieldName="ForeignKeyTable" Caption="Foreign Key Table" Width="160">
-            <CellDisplayTemplate Context="context">
-                @{
-                    var row = (ColumnRow)context.DataItem;
-                }
-                <DxTextBox
-                    @bind-text="row.ForeignKeyTable"
-                    readonly="@(row.IsConfirmed)" />
-            </CellDisplayTemplate>
-        </DxGridDataColumn>
-
-        <!-- Foreign Key Field -->
-        <DxGridDataColumn FieldName="ForeignKeyField" Caption="Foreign Key Field" Width="160">
-            <CellDisplayTemplate Context="context">
-                @{
-                    var row = (ColumnRow)context.DataItem;
-                }
-                <DxTextBox
-                    @bind-text="row.ForeignKeyField"
-                    ReadOnly="@(row.IsConfirmed)" />
-            </CellDisplayTemplate>
-        </DxGridDataColumn>
-
-        <!-- Confirmed -->
-        <DxGridDataColumn FieldName="IsConfirmed" Caption="Confirmed" Width="80">
-            <CellDisplayTemplate Context="context">
-                @{
-                    var row = (ColumnRow)context.DataItem;
-                }
-                <DxCheckBox
-                    @bind-Checked="row.IsConfirmed" />
-            </CellDisplayTemplate>
-        </DxGridDataColumn>
-
-        <!-- Removed -->
-        <DxGridDataColumn FieldName="IsRemoved" Caption="Removed" Width="80">
-            <CellDisplayTemplate Context="context">
-                @{
-                    var row = (ColumnRow)context.DataItem;
-                }
-                <DxCheckBox
-                    @bind-Checked="row.IsRemoved"
-                    ReadOnly="@(row.IsConfirmed || !IsAdmin)" />
-            </CellDisplayTemplate>
-        </DxGridDataColumn>
-    </Columns>
-
+                        <button type="button"
+                                class="btn grid-button"
+                                aria-label="Delete"
+                                @onclick="@(() => OpenDeleteModal(context.DataItem))"
+                                disabled="@(!isAdmin)">
+                            <i class="bi bi-trash-fill"></i>
+                        </button>
+                    </div>
+                </CellDisplayTemplate>
+            </DxGridCommandColumn> *@
+        </Columns>
         <!-- DetailRowTemplate shows audit history for a given row -->
         <DetailRowTemplate Context="detailContext">
             <DxGrid Data="((ColumnRow)detailContext.DataItem).AuditHistory"
@@ -364,7 +272,63 @@ Text="Fetching Data...">
         await LoadDataFromDbAsync();
     }
 
-        async Task ConfirmRevert()
+    async Task ConfirmSave()
+    {
+        // For each modified record, compare the stored original state with the current record
+        // and create audit entries for all changes.
+        foreach (var kvp in UnsavedChanges.Where(k => k.Value.Type == DataChangeType.Modification))
+        {
+            var modifiedRecord = kvp.Key;
+            var originalState = kvp.Value.OriginalState;  // Deep copy captured earlier.
+            // List of properties to audit.
+            var propertiesToAudit = new[]
+                  {
+                nameof(ColumnRow.TableName),
+                nameof(ColumnRow.ColumnName),
+                nameof(ColumnRow.IsNone),
+                nameof(ColumnRow.IsMasterKey),
+                nameof(ColumnRow.IsPrimaryKey),
+                nameof(ColumnRow.IsForeignKey),
+                nameof(ColumnRow.ForeignKeyTable),
+                nameof(ColumnRow.ForeignKeyField),
+                nameof(ColumnRow.IsRemoved),
+                nameof(ColumnRow.IsConfirmed)
+            };
+            foreach (var propName in propertiesToAudit)
+            {
+                var prop = typeof(ColumnRow).GetProperty(propName);
+                if (prop != null)
+                {
+                    string oldVal = prop.GetValue(originalState)?.ToString() ?? string.Empty;
+                    string newVal = prop.GetValue(modifiedRecord)?.ToString() ?? string.Empty;
+                    if (!string.Equals(oldVal, newVal, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Create a separate audit entry for this property change.
+                        modifiedRecord.AuditHistory.Add(new AuditEntry
+                            {
+                                ChangedOn = DateTime.Now,
+                                ChangedBy = currentUser,
+                                Description = $"{propName}",
+                                ColumnName = modifiedRecord.ColumnName,
+                                PreviousValue = oldVal,
+                                NewValue = newVal
+                            });
+                    }
+                }
+            }
+
+            modifiedRecord.AuditHistory = modifiedRecord.AuditHistory
+                .OrderByDescending(a => a.ChangedOn)
+                .ToList();
+        }
+
+        // Save the changes to the database.
+        await SaveDataToDbAsync();
+        UnsavedChanges.Clear();
+        CloseSaveModal();
+    }
+
+    async Task ConfirmRevert()
     {
         await Grid.CancelEditAsync();
         CloseRevertModal();
@@ -390,85 +354,49 @@ Text="Fetching Data...">
         await Grid.StartEditNewRowAsync();
     }
 
-    async Task ConfirmSave()
-    {
-        // For each modified record, compare the stored original state with the current record
-        // and create audit entries for all changes.
-        foreach (var kvp in UnsavedChanges.Where(k => k.Value.Type == DataChangeType.Modification))
-        {
-            var modifiedRecord = kvp.Key;
-            var originalState = kvp.Value.OriginalState;  // Deep copy captured earlier.
-            // List of properties to audit.
-            var propertiesToAudit = new[]
-                  {
-                nameof(ColumnRow.TableName),
-                nameof(ColumnRow.ColumnName),
-                nameof(ColumnRow.IsNone),
-                nameof(ColumnRow.IsMasterKey),
-                nameof(ColumnRow.IsPrimaryKey),
-                nameof(ColumnRow.IsForeignKey),
-                nameof(ColumnRow.ForeignKeyTable),
-                nameof(ColumnRow.ForeignKeyField),
-                nameof(ColumnRow.IsRemoved)
-            };
-            foreach (var propName in propertiesToAudit)
-            {
-                var prop = typeof(ColumnRow).GetProperty(propName);
-                if (prop != null)
-                {
-                    string oldVal = prop.GetValue(originalState)?.ToString() ?? string.Empty;
-                    string newVal = prop.GetValue(modifiedRecord)?.ToString() ?? string.Empty;
-                    if (!string.Equals(oldVal, newVal, StringComparison.OrdinalIgnoreCase))
-                    {
-                        // Create a separate audit entry for this property change.
-                        modifiedRecord.AuditHistory.Add(new AuditEntry
-                            {
-                                ChangedOn = DateTime.Now,
-                                ChangedBy = currentUser,
-                                Description = $"{propName} changed",
-                                ColumnName = modifiedRecord.ColumnName,
-                                PreviousValue = oldVal,
-                                NewValue = newVal
-                            });
-                    }
-                }
-            }
-        }
-
-        // Save the changes to the database.
-        await SaveDataToDbAsync();
-        UnsavedChanges.Clear();
-        CloseSaveModal();
-    }
 
     void Grid_CustomizeElement(GridCustomizeElementEventArgs e)
     {
-                if(e.ElementType == GridElementType.DataRow && e.VisibleIndex % 2 == 1) {
+        // Alternate‑row styling
+        if (e.ElementType == GridElementType.DataRow && e.VisibleIndex % 2 == 1) {
             e.CssClass = "alt-item";
         }
-        if(e.ElementType == GridElementType.HeaderCell) {
-            e.Style = "background-color: var(--DS-color-surface-neutral-default-selected)";
+        // Header styling
+        if (e.ElementType == GridElementType.HeaderCell) {
+            e.Style    = "background-color: var(--DS-color-surface-neutral-default-selected)";
             e.CssClass = "header-bold";
         }
 
+        // Cell styling & disabling
         if (e.ElementType == GridElementType.DataCell)
         {
             var rowData = (ColumnRow)Grid.GetDataItem(e.VisibleIndex);
+            var dataCol = e.Column as IGridDataColumn;
+
+            // Highlight any modified cells
             if (rowData != null && UnsavedChanges.TryGetValue(rowData, out var changes))
             {
-                var col = (IGridDataColumn)e.Column;
-                if (changes.Type == DataChangeType.Addition || changes.ChangedFields.Contains(col.FieldName))
-                    e.CssClass = "grid-modified-cell";
+                if (changes.Type == DataChangeType.Addition 
+                 || changes.ChangedFields.Contains(dataCol.FieldName))
+                {
+                    e.CssClass += " grid-modified-cell";
+                }
             }
 
-            // Apply conditional formatting:
-            // If the record is confirmed then highlight the row (and make it read-only).
-            if (rowData != null && !rowData.IsConfirmed)
+                // If the record is confirmed then highlight the row (and make it read-only).
+                if (rowData != null && !rowData.IsConfirmed)
+                {
+                    e.CssClass += " grid-unconfirmed-row";
+                }
+
+            // If this row is confirmed, disable everything *except* the IsConfirmed column
+            if (rowData != null && rowData.IsConfirmed && dataCol.FieldName != nameof(ColumnRow.IsConfirmed))
             {
-                e.CssClass += " grid-unconfirmed-row";
+                e.Style = "pointer-events: none;";
             }
         }
     }
+
 
     void Grid_CustomizeEditModel(GridCustomizeEditModelEventArgs e)
     {
@@ -494,7 +422,7 @@ Text="Fetching Data...">
                 {
                     ChangedOn = DateTime.Now,
                     ChangedBy = currentUser,
-                    Description = "New column added",
+                    Description = "New column",
                     ColumnName = editedRow.ColumnName,
                     PreviousValue = string.Empty,
                     NewValue = editedRow.ColumnName
@@ -690,7 +618,7 @@ Text="Fetching Data...">
         foreach (var item in items)
         {
             item.AuditHistory = item.AuditHistory
-                .OrderBy(a => a.ChangedOn)
+                .OrderByDescending(a => a.ChangedOn)
                 .ToList();
         }
 
