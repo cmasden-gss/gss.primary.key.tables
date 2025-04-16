@@ -1,4 +1,4 @@
-﻿@page "/1"
+﻿@page "/"
 @using System.Text.Json
 @using System.Text.Json.Serialization
 @using PrimaryKeys.Application
@@ -31,6 +31,11 @@
     .grid-confirmed-row {
     background-color: rgba(0, 128, 0, 0.15) !important;
     }
+
+   .grid-unconfirmed-row {
+    background-color: rgba(95, 54, 141, 0.15) !important;
+    }
+
     /* Style to indicate modified cells */
     .grid-modified-cell {
     border: 2px solid var(--bs-warning) !important;
@@ -57,7 +62,7 @@ Text="Fetching Data...">
     ShowFilterRow="true"
     ShowSearchBox="true"
 
-    EditMode="GridEditMode.EditCell"
+    EditMode="GridEditMode.PopupEditForm"
     EditModelSaving="Grid_EditModelSaving"
     CustomizeElement="Grid_CustomizeElement"
     CustomizeEditModel="Grid_CustomizeEditModel"
@@ -79,34 +84,126 @@ Text="Fetching Data...">
             </DxToolbar>
         </ToolbarTemplate>
         <Columns>
-            <DxGridDataColumn FieldName="TableName" Caption="Table Name" MinWidth="100" ReadOnly="@(!IsAdmin)" />
-            <DxGridDataColumn FieldName="ColumnName" Caption="Column Name" MinWidth="100" ReadOnly="@(!IsAdmin)" />
-            <DxGridDataColumn FieldName="IsNone" Caption="None" Width="60" />
-            <DxGridDataColumn FieldName="IsMasterKey" Caption="Master Key" Width="80" />
-            <DxGridDataColumn FieldName="IsPrimaryKey" Caption="Primary Key" Width="80" />
-            <DxGridDataColumn FieldName="IsForeignKey" Caption="Foreign Key" Width="80" />
-            <DxGridDataColumn FieldName="IsRemoved" Caption="Removed" Width="80" ReadOnly="@(!IsAdmin)" />
-            <DxGridDataColumn FieldName="ForeignKeyTable" Caption="Foreign Key Table" Width="160" />
-            <DxGridDataColumn FieldName="ForeignKeyField" Caption="Foreign Key Field" Width="160" />
-            <DxGridDataColumn FieldName="IsConfirmed" Caption="Confirmed" Width="80" ReadOnly="@(!IsAdmin)" />
-            @*             <DxGridCommandColumn Width="60px" NewButtonVisible="false" EditButtonVisible="false" SaveButtonVisible="false">
-                                <CellDisplayTemplate>
-                    <div class="text-center">
-                        <button type="button" class="btn btn-link grid-disabled-button" aria-label="Delete" @onclick="@(() => DeleteDataItem(context.DataItem))" readonly="@(!isAdmin)">
-                            <i class="bi bi-trash-fill"></i>
-                        </button>
+        <!-- Table Name -->
+        <DxGridDataColumn FieldName="TableName" Caption="Table Name" MinWidth="100">
+            <CellDisplayTemplate Context="context">
+                @{
+                    var row = (ColumnRow)context.DataItem;
+                }
+                <DxTextBox
+                    @bind-text="row.TableName"
+                    ReadOnly="@(row.IsConfirmed || !IsAdmin)" />
+            </CellDisplayTemplate>
+        </DxGridDataColumn>
 
-                        <button type="button"
-                                class="btn grid-button"
-                                aria-label="Delete"
-                                @onclick="@(() => OpenDeleteModal(context.DataItem))"
-                                disabled="@(!isAdmin)">
-                            <i class="bi bi-trash-fill"></i>
-                        </button>
-                    </div>
-                </CellDisplayTemplate>
-            </DxGridCommandColumn> *@
-        </Columns>
+        <!-- Column Name -->
+        <DxGridDataColumn FieldName="ColumnName" Caption="Column Name" MinWidth="100">
+            <CellDisplayTemplate Context="context">
+                @{
+                    var row = (ColumnRow)context.DataItem;
+                }
+                <DxTextBox
+                    @bind-text="row.ColumnName"
+                    ReadOnly="@(row.IsConfirmed || !IsAdmin)" />
+            </CellDisplayTemplate>
+        </DxGridDataColumn>
+
+        <!-- None -->
+        <DxGridDataColumn FieldName="IsNone" Caption="None" Width="60">
+            <CellDisplayTemplate Context="context">
+                @{
+                    var row = (ColumnRow)context.DataItem;
+                }
+                <DxCheckBox
+                    @bind-Checked="row.IsNone"
+                    ReadOnly="@(row.IsConfirmed)" />
+            </CellDisplayTemplate>
+        </DxGridDataColumn>
+
+        <!-- Master Key -->
+        <DxGridDataColumn FieldName="IsMasterKey" Caption="Master Key" Width="80">
+            <CellDisplayTemplate Context="context">
+                @{
+                    var row = (ColumnRow)context.DataItem;
+                }
+                <DxCheckBox
+                    @bind-Checked="row.IsMasterKey"
+                    ReadOnly="@(row.IsConfirmed)" />
+            </CellDisplayTemplate>
+        </DxGridDataColumn>
+
+        <!-- Primary Key -->
+        <DxGridDataColumn FieldName="IsPrimaryKey" Caption="Primary Key" Width="80">
+            <CellDisplayTemplate Context="context">
+                @{
+                    var row = (ColumnRow)context.DataItem;
+                }
+                <DxCheckBox
+                    @bind-Checked="row.IsPrimaryKey"
+                    ReadOnly="@(row.IsConfirmed)" />
+            </CellDisplayTemplate>
+        </DxGridDataColumn>
+
+        <!-- Foreign Key -->
+        <DxGridDataColumn FieldName="IsForeignKey" Caption="Foreign Key" Width="80">
+            <CellDisplayTemplate Context="context">
+                @{
+                    var row = (ColumnRow)context.DataItem;
+                }
+                <DxCheckBox
+                    @bind-Checked="row.IsForeignKey"
+                    ReadOnly="@(row.IsConfirmed)" />
+            </CellDisplayTemplate>
+        </DxGridDataColumn>
+
+        <!-- Foreign Key Table -->
+        <DxGridDataColumn FieldName="ForeignKeyTable" Caption="Foreign Key Table" Width="160">
+            <CellDisplayTemplate Context="context">
+                @{
+                    var row = (ColumnRow)context.DataItem;
+                }
+                <DxTextBox
+                    @bind-text="row.ForeignKeyTable"
+                    readonly="@(row.IsConfirmed)" />
+            </CellDisplayTemplate>
+        </DxGridDataColumn>
+
+        <!-- Foreign Key Field -->
+        <DxGridDataColumn FieldName="ForeignKeyField" Caption="Foreign Key Field" Width="160">
+            <CellDisplayTemplate Context="context">
+                @{
+                    var row = (ColumnRow)context.DataItem;
+                }
+                <DxTextBox
+                    @bind-text="row.ForeignKeyField"
+                    ReadOnly="@(row.IsConfirmed)" />
+            </CellDisplayTemplate>
+        </DxGridDataColumn>
+
+        <!-- Confirmed -->
+        <DxGridDataColumn FieldName="IsConfirmed" Caption="Confirmed" Width="80">
+            <CellDisplayTemplate Context="context">
+                @{
+                    var row = (ColumnRow)context.DataItem;
+                }
+                <DxCheckBox
+                    @bind-Checked="row.IsConfirmed" />
+            </CellDisplayTemplate>
+        </DxGridDataColumn>
+
+        <!-- Removed -->
+        <DxGridDataColumn FieldName="IsRemoved" Caption="Removed" Width="80">
+            <CellDisplayTemplate Context="context">
+                @{
+                    var row = (ColumnRow)context.DataItem;
+                }
+                <DxCheckBox
+                    @bind-Checked="row.IsRemoved"
+                    ReadOnly="@(row.IsConfirmed || !IsAdmin)" />
+            </CellDisplayTemplate>
+        </DxGridDataColumn>
+    </Columns>
+
         <!-- DetailRowTemplate shows audit history for a given row -->
         <DetailRowTemplate Context="detailContext">
             <DxGrid Data="((ColumnRow)detailContext.DataItem).AuditHistory"
@@ -267,6 +364,32 @@ Text="Fetching Data...">
         await LoadDataFromDbAsync();
     }
 
+        async Task ConfirmRevert()
+    {
+        await Grid.CancelEditAsync();
+        CloseRevertModal();
+        UnsavedChanges.Clear();
+        await LoadDataFromDbAsync();
+
+    }
+
+    async Task Submit_Click()
+    {
+        OpenSaveModal();
+        await Task.CompletedTask;
+    }
+
+    async Task Revert_Click()
+    {
+        OpenRevertModal();
+        await Task.CompletedTask;
+    }
+
+    async Task New_Click()
+    {
+        await Grid.StartEditNewRowAsync();
+    }
+
     async Task ConfirmSave()
     {
         // For each modified record, compare the stored original state with the current record
@@ -318,32 +441,6 @@ Text="Fetching Data...">
         CloseSaveModal();
     }
 
-    async Task ConfirmRevert()
-    {
-        await Grid.CancelEditAsync();
-        CloseRevertModal();
-        UnsavedChanges.Clear();
-        await LoadDataFromDbAsync();
-
-    }
-
-    async Task Submit_Click()
-    {
-        OpenSaveModal();
-        await Task.CompletedTask;
-    }
-
-    async Task Revert_Click()
-    {
-        OpenRevertModal();
-        await Task.CompletedTask;
-    }
-
-    async Task New_Click()
-    {
-        await Grid.StartEditNewRowAsync();
-    }
-
     void Grid_CustomizeElement(GridCustomizeElementEventArgs e)
     {
                 if(e.ElementType == GridElementType.DataRow && e.VisibleIndex % 2 == 1) {
@@ -366,9 +463,9 @@ Text="Fetching Data...">
 
             // Apply conditional formatting:
             // If the record is confirmed then highlight the row (and make it read-only).
-            if (rowData != null && rowData.IsConfirmed)
+            if (rowData != null && !rowData.IsConfirmed)
             {
-                e.CssClass += " grid-confirmed-row";
+                e.CssClass += " grid-unconfirmed-row";
             }
         }
     }
