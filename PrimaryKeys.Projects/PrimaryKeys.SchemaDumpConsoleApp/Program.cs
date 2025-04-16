@@ -196,10 +196,6 @@ namespace PrimaryKeys.SchemaDumpConsoleApp
                     AllowNull = !string.IsNullOrWhiteSpace(schemaTableRow["AllowDbNull"].ToString()) && bool.Parse(schemaTableRow["AllowDbNull"].ToString()),
                     IsPrimaryKey = !string.IsNullOrWhiteSpace(schemaTableRow["IsKey"].ToString()) && bool.Parse(schemaTableRow["IsKey"].ToString()),
                     IsUnique = !string.IsNullOrWhiteSpace(schemaTableRow["IsUnique"].ToString()) && bool.Parse(schemaTableRow["IsUnique"].ToString()),
-                    //BaseSchemaName = schemaTableRow["BaseSchemaName"].ToString(),
-                    //BaseTableName = schemaTableRow["BaseTableName"].ToString(),
-                    //BaseColumnName = schemaTableRow["BaseColumnName"].ToString(),
-                    //CharacterSetName = schemaTableRow["CharacterSetName"].ToString()
                 });
             }
         }
@@ -438,6 +434,7 @@ namespace PrimaryKeys.SchemaDumpConsoleApp
             // This call runs the routine that writes table relation information to file.
             Console.WriteLine("Running KeyMapperRoutine to gather relation information...");
             //KeyMapperRoutine.Routine();
+
             // Read relations from the file.
             List<SqlTableInformation> tableRelations = TableRelationsHelper.ReadTableRelationsFromFile(tableRelationsFilePath);
             Console.WriteLine($"Table relations loaded: {tableRelations.Count} table(s) found.");
@@ -484,83 +481,6 @@ namespace PrimaryKeys.SchemaDumpConsoleApp
 
             // ----- 4. Use DbContext
             await UpdateDbContextFromNewSchemasAsync(NewSchemas);
-
-            // ----- 4. Load previous schema (if exists) from file -----
-            //if (File.Exists(schemaFilePath))
-            //{
-            //    try
-            //    {
-            //        string jsonOld = await File.ReadAllTextAsync(schemaFilePath);
-            //        var loaded = JsonSerializer.Deserialize<List<ColumnRow>>(jsonOld);
-            //        OldSchemas = loaded != null ? loaded.OrderBy(x => x.TableName).ThenBy(x => x.ColumnIndex).ToList() : new List<ColumnRow>();
-            //        Console.WriteLine("\nLoaded previous schema from file.");
-            //    }
-            //    catch (Exception ex)
-            //    {
-            //        Console.WriteLine("Error reading previous schema: " + ex.Message);
-            //        OldSchemas = new List<ColumnRow>();
-            //    }
-            //}
-            //else
-            //{
-            //    Console.WriteLine("\nNo previous schema file found; first run.");
-            //}
-
-            //// ----- 5. Compare new schemas to old schemas and add audit entries -----
-            //string currentUser = Environment.UserName;
-            //foreach (var newCol in NewSchemas)
-            //{
-            //    // Find matching record by TableName and ColumnName.
-            //    var oldCol = OldSchemas.FirstOrDefault(c =>
-            //        c.TableName.Equals(newCol.TableName, StringComparison.OrdinalIgnoreCase) &&
-            //        c.ColumnName.Equals(newCol.ColumnName, StringComparison.OrdinalIgnoreCase));
-            //    if (oldCol == null)
-            //    {
-            //        newCol.AuditHistory.Add(new AuditEntry
-            //        {
-            //            ChangedOn = DateTime.Now,
-            //            ChangedBy = currentUser,
-            //            Description = "New column added",
-            //            ColumnName = newCol.ColumnName,
-            //            PreviousValue = string.Empty,
-            //            NewValue = newCol.ColumnName
-            //        });
-            //    }
-            //    else
-            //    {
-            //        if (newCol.IsPrimaryKey != oldCol.IsPrimaryKey)
-            //        {
-            //            newCol.AuditHistory.Add(new AuditEntry
-            //            {
-            //                ChangedOn = DateTime.Now,
-            //                ChangedBy = currentUser,
-            //                Description = "PrimaryKey flag changed",
-            //                ColumnName = newCol.ColumnName,
-            //                PreviousValue = oldCol.IsPrimaryKey.ToString(),
-            //                NewValue = newCol.IsPrimaryKey.ToString()
-            //            });
-            //        }
-            //        if (newCol.IsForeignKey != oldCol.IsForeignKey)
-            //        {
-            //            newCol.AuditHistory.Add(new AuditEntry
-            //            {
-            //                ChangedOn = DateTime.Now,
-            //                ChangedBy = currentUser,
-            //                Description = "ForeignKey flag changed",
-            //                ColumnName = newCol.ColumnName,
-            //                PreviousValue = oldCol.IsForeignKey.ToString(),
-            //                NewValue = newCol.IsForeignKey.ToString()
-            //            });
-            //        }
-            //        // Additional field comparisons can be added here.
-            //    }
-            //}
-
-            //// 6. Save the updated NewSchemas back to file.
-            //var sortedNew = NewSchemas.OrderBy(x => x.TableName).ThenBy(x => x.ColumnIndex).ToList();
-            //string newJson = JsonSerializer.Serialize(sortedNew, new JsonSerializerOptions { WriteIndented = true });
-            //await File.WriteAllTextAsync(schemaFilePath, newJson);
-            //Console.WriteLine($"\nUpdated schema saved to {schemaFilePath}");
 
             Console.ReadKey();
         }

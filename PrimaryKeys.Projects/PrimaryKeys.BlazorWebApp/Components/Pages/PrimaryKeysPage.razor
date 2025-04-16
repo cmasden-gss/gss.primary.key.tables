@@ -43,7 +43,7 @@
 </style>
 
 
-<h5 class="mb-4">Schema Manager - @currentUser</h5>
+<h5 class="mb-4">Schema Manager - @CurrentUser</h5>
 
 <DxLoadingPanel @bind-Visible="IsLoading"
 IsContentBlocked="true"
@@ -78,7 +78,6 @@ Text="Fetching Data...">
                     <DxToolbarItem Alignment="ToolbarItemAlignment.Right" Text="Removed" RenderStyle="ButtonRenderStyle.Secondary" Click="IsRemovedShown_Click" Checked="IsRemovedShown"  BeginGroup="true"/>
                     <DxToolbarItem Alignment="ToolbarItemAlignment.Right" Text="Export" Click="ExportXlsx_Click" BeginGroup="true" />
                     <DxToolbarItem Alignment="ToolbarItemAlignment.Right" Text="Column Chooser" RenderStyle="ButtonRenderStyle.Secondary" IconCssClass="grid-icon-column-chooser" Click="ColumnChooserButton_Click" BeginGroup="true"/>
-                    @*                     <DxToolbarItem Alignment="ToolbarItemAlignment.Right" Text="Help" RenderStyle="ButtonRenderStyle.Secondary" IconCssClass="oi oi-info" NavigateUrl="https://docs.gss-service.com/en_US/in-house-sdk/schema-manager" BeginGroup="true"/> *@
                     <DxToolbarItem Alignment="ToolbarItemAlignment.Right" Text="Help" RenderStyle="ButtonRenderStyle.Secondary" IconCssClass="oi oi-info" Click="@(e => JSRuntime.InvokeVoidAsync("open", "https://docs.gss-service.com/en_US/in-house-sdk/schema-manager", "_blank"))" BeginGroup="true" />
                 </Items>
             </DxToolbar>
@@ -94,23 +93,7 @@ Text="Fetching Data...">
             <DxGridDataColumn FieldName="ForeignKeyField" Caption="Foreign Key Field" Width="160" />
             <DxGridDataColumn FieldName="IsConfirmed" Caption="Confirmed" Width="80" ReadOnly="@(!IsAdmin)" />
             <DxGridDataColumn FieldName="IsRemoved" Caption="Removed" Width="80" ReadOnly="@(!IsAdmin)" />
-            @*             <DxGridCommandColumn Width="60px" NewButtonVisible="false" EditButtonVisible="false" SaveButtonVisible="false">
-                                <CellDisplayTemplate>
-                    <div class="text-center">
-                        <button type="button" class="btn btn-link grid-disabled-button" aria-label="Delete" @onclick="@(() => DeleteDataItem(context.DataItem))" readonly="@(!isAdmin)">
-                            <i class="bi bi-trash-fill"></i>
-                        </button>
 
-                        <button type="button"
-                                class="btn grid-button"
-                                aria-label="Delete"
-                                @onclick="@(() => OpenDeleteModal(context.DataItem))"
-                                disabled="@(!isAdmin)">
-                            <i class="bi bi-trash-fill"></i>
-                        </button>
-                    </div>
-                </CellDisplayTemplate>
-            </DxGridCommandColumn> *@
         </Columns>
         <!-- DetailRowTemplate shows audit history for a given row -->
         <DetailRowTemplate Context="detailContext">
@@ -174,39 +157,24 @@ Text="Fetching Data...">
     </div>
 }
 
-@* @if (ShowDeleteModalFlag)
-{
-    <div class="modal fade show" style="display:block;" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Confirm Delete</h5>
-                    <button type="button" class="btn-close" aria-label="Close" @onclick="CloseDeleteModal"></button>
-                </div>
-                <div class="modal-body">
-                    <p>Are you sure you want to delete the following row?</p>
-                    <p><strong>@RowToDelete.TableName - @RowToDelete.ColumnName</strong></p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="CloseDeleteModal">Cancel</button>
-                    <button type="button" class="btn btn-danger" @onclick="ConfirmDelete">Delete</button>
-                </div>
-            </div>
-        </div>
-    </div>
-} *@
-
 @code {
     IGrid Grid { get; set; }
 
     // Main data source from the database.
     IList<ColumnRow> DataSource { get; set; } = new List<ColumnRow>();
 
+    record DataChange(DataChangeType Type, HashSet<string> ChangedFields)
+    {
+        public ColumnRow OriginalState { get; set; }
+    }
+
+    enum DataChangeType { Modification, Addition, Delete }
+
     // Change tracking: key = modified record, value stores a deep copy of its original state.
     Dictionary<ColumnRow, DataChange> UnsavedChanges { get; } = new();
     bool BatchItemsEnabled => UnsavedChanges.Count > 0 || Grid.IsEditing();
 
-    string currentUser { get; set; } //=> "TestUser";  // Replace with your actual user retrieval.
+    string CurrentUser { get; set; }
 
     bool IsLoading = false;
     bool IsAdmin = false;
@@ -222,9 +190,6 @@ Text="Fetching Data...">
 
     void OpenRevertModal() => ShowRevertModalFlag = true;
     void CloseRevertModal() => ShowRevertModalFlag = false;
-
-    // bool ShowDeleteModalFlag { get; set; }
-    // ColumnRow? RowToDelete { get; set; }
 
     async Task IsRemovedShown_Click()
     {
@@ -244,28 +209,17 @@ Text="Fetching Data...">
             });
     }
 
-    bool IsColumnReadOnly(object dataItem)
-    {
-        if (dataItem is ColumnRow row)
-        {
-            // If the row is confirmed, then all columns (except the Confirmed column)
-            // should be read-only, regardless of isAdmin.
-            return row.IsConfirmed || !IsAdmin;
-        }
-        return true;
-    }
-
     protected override async Task OnInitializedAsync()
     {
         // Retrieve current user info.
         var user = HttpContextAccessor.HttpContext.User;
         if (user?.Identity?.IsAuthenticated == true)
         {
-            currentUser = user.Identity.Name.Split('\\').Last().ToLower();
+            CurrentUser = user.Identity.Name.Split('\\').Last().ToLower();
 
             // Read the admins from appsettings.
             var admins = Configuration.GetSection("IdentityConfiguration:Administrators").Get<string[]>() ?? Array.Empty<string>();
-            IsAdmin = admins.Any(u => string.Equals(u, currentUser, StringComparison.OrdinalIgnoreCase));
+            IsAdmin = admins.Any(u => string.Equals(u, CurrentUser, StringComparison.OrdinalIgnoreCase));
 
         }
 
@@ -307,7 +261,7 @@ Text="Fetching Data...">
                         modifiedRecord.AuditHistory.Add(new AuditEntry
                             {
                                 ChangedOn = DateTime.Now,
-                                ChangedBy = currentUser,
+                                ChangedBy = CurrentUser,
                                 Description = $"{propName}",
                                 ColumnName = modifiedRecord.ColumnName,
                                 PreviousValue = oldVal,
@@ -354,7 +308,6 @@ Text="Fetching Data...">
         await Grid.StartEditNewRowAsync();
     }
 
-
     void Grid_CustomizeElement(GridCustomizeElementEventArgs e)
     {
         // Alternate‑row styling
@@ -397,7 +350,6 @@ Text="Fetching Data...">
         }
     }
 
-
     void Grid_CustomizeEditModel(GridCustomizeEditModelEventArgs e)
     {
         if (e.IsNew)
@@ -421,7 +373,7 @@ Text="Fetching Data...">
             editedRow.AuditHistory.Add(new AuditEntry
                 {
                     ChangedOn = DateTime.Now,
-                    ChangedBy = currentUser,
+                    ChangedBy = CurrentUser,
                     Description = "New column",
                     ColumnName = editedRow.ColumnName,
                     PreviousValue = string.Empty,
@@ -448,69 +400,6 @@ Text="Fetching Data...">
         }
     }
 
-    // Instead of calling DeleteDataItem directly, open the delete modal.
-    // void OpenDeleteModal(object dataItem)
-    // {
-    //     RowToDelete = dataItem as ColumnRow;
-    //     ShowDeleteModalFlag = true;
-    //     StateHasChanged();
-    // }
-
-    // void CloseDeleteModal()
-    // {
-    //     ShowDeleteModalFlag = false;
-    //     RowToDelete = null;
-    //     StateHasChanged();
-    // }
-
-    // // Called from the modal confirmation button.
-    // async Task ConfirmDelete()
-    // {
-    //     if (RowToDelete is not null)
-    //     {
-    //         // Call your existing delete logic.
-    //         DeleteDataItem(RowToDelete);
-    //     }
-    //     CloseDeleteModal();
-    //     await Task.CompletedTask;
-    // }
-
-
-    // void DeleteDataItem(object dataItem)
-    // {
-    //     // var row = (ColumnRow)dataItem;
-    //     // // UnsavedChanges[row] = new DataChange(DataChangeType.Delete, new HashSet<string>());
-    //     // // DataSource.Remove(row);
-
-    //     // DataSource.Remove(row);
-    //     // Grid.Reload();
-
-    //     var row = (ColumnRow)dataItem;
-    //     row.IsRemoved = true;
-
-    //     // Track the modification change if not already tracked.
-    //     if (!UnsavedChanges.ContainsKey(row))
-    //     {
-    //         UnsavedChanges[row] = new DataChange(DataChangeType.Modification, new HashSet<string>());
-    //     }
-    //     UnsavedChanges[row].ChangedFields.Add(nameof(ColumnRow.IsRemoved));
-
-    //     row.AuditHistory.Add(new AuditEntry
-    //         {
-    //             ChangedOn = DateTime.Now,
-    //             ChangedBy = currentUser,
-    //             Description = "Record marked as removed",
-    //             ColumnName = row.ColumnName,
-    //             PreviousValue = "",
-    //             NewValue = ""
-    //         });
-
-    //     // // Optionally, remove the row from the grid display.
-    //     // DataSource.Remove(row);
-    //     // Grid.Reload();
-    // }
-
-    // Compare properties and update the original record (used during inline edit).
     HashSet<string> ApplyModifiedFields(ColumnRow edited, ColumnRow original)
     {
         var changedFields = new HashSet<string>();
@@ -567,13 +456,8 @@ Text="Fetching Data...">
         return changedFields;
     }
 
-    record DataChange(DataChangeType Type, HashSet<string> ChangedFields)
-    {
-        public ColumnRow OriginalState { get; set; }
-    }
-    enum DataChangeType { Modification, Addition, Delete }
 
-    // ---------- Database Save/Load Methods ----------
+
     async Task LoadDataFromDbAsync()
     {
         if (IsLoading)
@@ -673,8 +557,6 @@ Text="Fetching Data...">
                     }
                     else
                     {
-                        // If the entity no longer exists, you can decide to skip it,
-                        // warn the user, or treat it as a deletion.
                         Console.WriteLine($"Entity with Id {item.Id} does not exist, skipping update.");
                     }
                     break;
@@ -690,8 +572,6 @@ Text="Fetching Data...">
 
         await context.SaveChangesAsync();
         Console.WriteLine("Schema saved to the database.");
-
-
 
         IsLoading = false;
         StateHasChanged();
