@@ -12,25 +12,25 @@
 
 <style>
     .highlighted-item > td {
-        background-color: var(--bs-danger-border-subtle);
+    background-color: var(--bs-danger-border-subtle);
     }
     .highlighted-item > td:first-child {
-        background-color: transparent;
+    background-color: transparent;
     }
     /* Example additional style for confirmed rows */
     .grid-confirmed-row {
-        background-color: rgba(0, 128, 0, 0.15) !important;
+    background-color: rgba(0, 128, 0, 0.15) !important;
     }
     /* Style to indicate modified cells */
     .grid-modified-cell {
-        border: 2px solid var(--bs-warning) !important;
+    border: 2px solid var(--bs-warning) !important;
     }
 </style>
 
 
 <h5 class="mb-4">Schema Manager - @currentUser</h5>
 
-<DxLoadingPanel @bind-Visible="isLoading"
+<DxLoadingPanel @bind-Visible="IsLoading"
 IsContentBlocked="true"
 ApplyBackgroundShading="false"
 IndicatorAreaVisible="false"
@@ -57,28 +57,28 @@ Text="Fetching Data...">
         <ToolbarTemplate>
             <DxToolbar ItemRenderStyleMode="ToolbarRenderStyleMode.Plain">
                 <Items>
-                    <DxToolbarItem Alignment="ToolbarItemAlignment.Left" Text="New" RenderStyle="ButtonRenderStyle.Secondary" IconCssClass="grid-toolbar-new" Click="New_Click"  Enabled="@isAdmin" /> 
+                    <DxToolbarItem Alignment="ToolbarItemAlignment.Left" Text="New" RenderStyle="ButtonRenderStyle.Secondary" IconCssClass="grid-toolbar-new" Click="New_Click"  Enabled="@IsAdmin" /> 
                     <DxToolbarItem Alignment="ToolbarItemAlignment.Left" Text="Submit" RenderStyle="ButtonRenderStyle.Secondary" IconCssClass="grid-toolbar-save" Click="Submit_Click"  Enabled="BatchItemsEnabled" BeginGroup="true"  />
                     <DxToolbarItem Alignment="ToolbarItemAlignment.Left" Text="Revert" RenderStyle="ButtonRenderStyle.Secondary" IconCssClass="grid-toolbar-cancel" Click="Revert_Click"  Enabled="BatchItemsEnabled" />
-                    <DxToolbarItem Alignment="ToolbarItemAlignment.Right" Text="Removed" RenderStyle="ButtonRenderStyle.Secondary" Click="Removed_Click" Checked="IsRemoved"  BeginGroup="true"/>
+                    <DxToolbarItem Alignment="ToolbarItemAlignment.Right" Text="Removed" RenderStyle="ButtonRenderStyle.Secondary" Click="IsRemovedShown_Click" Checked="IsRemovedShown"  BeginGroup="true"/>
                     <DxToolbarItem Alignment="ToolbarItemAlignment.Right" Text="Export" Click="ExportXlsx_Click" BeginGroup="true" />
                     <DxToolbarItem Alignment="ToolbarItemAlignment.Right" Text="Column Chooser" RenderStyle="ButtonRenderStyle.Secondary" IconCssClass="grid-icon-column-chooser" Click="ColumnChooserButton_Click" BeginGroup="true"/>
-@*                     <DxToolbarItem Alignment="ToolbarItemAlignment.Right" Text="Help" RenderStyle="ButtonRenderStyle.Secondary" IconCssClass="oi oi-info" NavigateUrl="https://docs.gss-service.com/en_US/in-house-sdk/schema-manager" BeginGroup="true"/> *@
+                    @*                     <DxToolbarItem Alignment="ToolbarItemAlignment.Right" Text="Help" RenderStyle="ButtonRenderStyle.Secondary" IconCssClass="oi oi-info" NavigateUrl="https://docs.gss-service.com/en_US/in-house-sdk/schema-manager" BeginGroup="true"/> *@
                     <DxToolbarItem Alignment="ToolbarItemAlignment.Right" Text="Help" RenderStyle="ButtonRenderStyle.Secondary" IconCssClass="oi oi-info" Click="@(e => JSRuntime.InvokeVoidAsync("open", "https://docs.gss-service.com/en_US/in-house-sdk/schema-manager", "_blank"))" BeginGroup="true" />
                 </Items>
             </DxToolbar>
         </ToolbarTemplate>
         <Columns>
-            <DxGridDataColumn FieldName="TableName" Caption="Table Name" MinWidth="100" ReadOnly="@(!isAdmin)" />
-            <DxGridDataColumn FieldName="ColumnName" Caption="Column Name" MinWidth="100" ReadOnly="@(!isAdmin)" />
+            <DxGridDataColumn FieldName="TableName" Caption="Table Name" MinWidth="100" ReadOnly="@(!IsAdmin)" />
+            <DxGridDataColumn FieldName="ColumnName" Caption="Column Name" MinWidth="100" ReadOnly="@(!IsAdmin)" />
             <DxGridDataColumn FieldName="IsNone" Caption="None" Width="60" />
             <DxGridDataColumn FieldName="IsMasterKey" Caption="Master Key" Width="80" />
             <DxGridDataColumn FieldName="IsPrimaryKey" Caption="Primary Key" Width="80" />
             <DxGridDataColumn FieldName="IsForeignKey" Caption="Foreign Key" Width="80" />
-            <DxGridDataColumn FieldName="IsRemoved" Caption="Removed" Width="80" ReadOnly="@(!isAdmin)" />
+            <DxGridDataColumn FieldName="IsRemoved" Caption="Removed" Width="80" ReadOnly="@(!IsAdmin)" />
             <DxGridDataColumn FieldName="ForeignKeyTable" Caption="Foreign Key Table" Width="160" />
             <DxGridDataColumn FieldName="ForeignKeyField" Caption="Foreign Key Field" Width="160" />
-            <DxGridDataColumn FieldName="IsConfirmed" Caption="Confirmed" Width="80" ReadOnly="@(!isAdmin)" />
+            <DxGridDataColumn FieldName="IsConfirmed" Caption="Confirmed" Width="80" ReadOnly="@(!IsAdmin)" />
             @*             <DxGridCommandColumn Width="60px" NewButtonVisible="false" EditButtonVisible="false" SaveButtonVisible="false">
                                 <CellDisplayTemplate>
                     <div class="text-center">
@@ -193,22 +193,27 @@ Text="Fetching Data...">
 
     string currentUser { get; set; } //=> "TestUser";  // Replace with your actual user retrieval.
 
-    bool isLoading = false;
-    bool isAdmin = false;
-
-    bool IsRemoved { get; set; } = false;
+    bool IsLoading = false;
+    bool IsAdmin = false;
+    bool IsRemovedShown { get; set; } = false;
 
     // Modal flags.
     bool ShowSaveModalFlag { get; set; }
     bool ShowRevertModalFlag { get; set; }
 
-    // bool ShowDeleteModalFlag { get; set; }
+    // ---------- Modal Handlers ----------
+    void OpenSaveModal() => ShowSaveModalFlag = true;
+    void CloseSaveModal() => ShowSaveModalFlag = false;
 
+    void OpenRevertModal() => ShowRevertModalFlag = true;
+    void CloseRevertModal() => ShowRevertModalFlag = false;
+
+    // bool ShowDeleteModalFlag { get; set; }
     // ColumnRow? RowToDelete { get; set; }
 
-    async Task Removed_Click()
+    async Task IsRemovedShown_Click()
     {
-        IsRemoved = !IsRemoved;
+        IsRemovedShown = !IsRemovedShown;
         await LoadDataFromDbAsync();
     }
 
@@ -224,6 +229,17 @@ Text="Fetching Data...">
             });
     }
 
+    bool IsColumnReadOnly(object dataItem)
+    {
+        if (dataItem is ColumnRow row)
+        {
+            // If the row is confirmed, then all columns (except the Confirmed column)
+            // should be read-only, regardless of isAdmin.
+            return row.IsConfirmed || !IsAdmin;
+        }
+        return true;
+    }
+
     protected override async Task OnInitializedAsync()
     {
         // Retrieve current user info.
@@ -234,19 +250,12 @@ Text="Fetching Data...">
 
             // Read the admins from appsettings.
             var admins = Configuration.GetSection("IdentityConfiguration:Administrators").Get<string[]>() ?? Array.Empty<string>();
-            isAdmin = admins.Any(u => string.Equals(u, currentUser, StringComparison.OrdinalIgnoreCase));
+            IsAdmin = admins.Any(u => string.Equals(u, currentUser, StringComparison.OrdinalIgnoreCase));
 
         }
 
         await LoadDataFromDbAsync();
     }
-
-    // ---------- Modal Handlers ----------
-    void OpenSaveModal() => ShowSaveModalFlag = true;
-    void CloseSaveModal() => ShowSaveModalFlag = false;
-
-    void OpenRevertModal() => ShowRevertModalFlag = true;
-    void CloseRevertModal() => ShowRevertModalFlag = false;
 
     async Task ConfirmSave()
     {
@@ -524,12 +533,12 @@ Text="Fetching Data...">
     // ---------- Database Save/Load Methods ----------
     async Task LoadDataFromDbAsync()
     {
-        if (isLoading)
+        if (IsLoading)
         {
             return;
         }
 
-        isLoading = true;
+        IsLoading = true;
         StateHasChanged();
 
         DataSource.Clear();
@@ -540,7 +549,7 @@ Text="Fetching Data...">
         IQueryable<ColumnRow> query = context.ColumnRows;
 
 
-        if (IsRemoved)
+        if (IsRemovedShown)
         {
             query = query.Where(x => x.IsRemoved);
         }
@@ -574,18 +583,18 @@ Text="Fetching Data...">
 
         Console.WriteLine("Loaded schema from the database.");
 
-        isLoading = false;
+        IsLoading = false;
         StateHasChanged();
     }
 
     async Task SaveDataToDbAsync()
     {
-        if (isLoading)
+        if (IsLoading)
         {
             return;
         }
 
-        isLoading = true;
+        IsLoading = true;
         StateHasChanged();
 
 
@@ -641,7 +650,7 @@ Text="Fetching Data...">
 
 
 
-        isLoading = false;
+        IsLoading = false;
         StateHasChanged();
     }
 }
